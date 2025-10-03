@@ -1,5 +1,6 @@
 # Aligno: IT Job Search Engine
-![Python 3.13](https://img.shields.io/badge/python-3.13-blue) ![asyncpg](https://img.shields.io/badge/asyncpg-0.29.0-blue) ![Playwright](https://img.shields.io/badge/playwright-1.52-blue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.3-blue)
+![Python 3.9](https://img.shields.io/badge/python-3.9-blue) ![asyncpg](https://img.shields.io/badge/asyncpg-0.29.0-blue) ![Playwright](https://img.shields.io/badge/playwright-1.52-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.3-blue) ![AWS](https://img.shields.io/badge/AWS-RDS-orange)
+
 ## 🚀 Overview
 
 Aligno is a web application for collecting, processing and analyzing job offers from JustJoin.it. The main goals are:
@@ -8,12 +9,21 @@ Aligno is a web application for collecting, processing and analyzing job offers 
 3. Interactive job search based on user preferences and skills.
 4. Generation of a personalized CV for a specific job posting.
 
+## 📊 Current Status
+
+- ✅ **JustJoin.it Scraper**: Fully implemented with Playwright
+- ✅ **Database Schema**: Complete with offers table and processed view
+- ✅ **AWS RDS Support**: Ready for production deployment
+- ⏳ **Market Dashboard**: Planned
+- ⏳ **Job Search API**: Planned
+- ⏳ **CV Generation**: Planned
+
 ## 🔧 Key Features
 
 1. **JustJoin.it Scraper**
    - Playwright-based scraper collecting job-offer links and details from JustJoin.it.
    - Updates PostgreSQL database by inserting new offers and purging stale ones.
-
+   - **AWS RDS Ready**: Automatically detects and connects to AWS RDS databases.
 
 2. **Market overview** (To do)
    - Presents market statistics via a dashboard.
@@ -36,21 +46,19 @@ Aligno is a web application for collecting, processing and analyzing job offers 
 
 ```
 Aligno/
-├─ src/                                # Source code catalog
+├─ src/                                # Source code directory
 │  ├─ sql/                             # SQL initialization scripts
-│  │  ├─ 01_offers.sql                 # Table definition
-│  │  └─ 02_offers_processed_view.sql  # View definition
-│  ├─ validation/                      # Data validation module
-│  │  ├─ __init__.py                   # Package initialization
-│  │  ├─ models.py                     # Pydantic models for data validation
-│  │  ├─ config.py                     # Configuration validation
-│  │  └─ validators.py                 # Custom validators and helpers
-│  ├─ scraper/                         # Package for scraper functionality
-│  │  ├─ __main__.py                   # Package API
-│  │  ├─ cli.py                        # CLI module with argument parsing and orchestration
-│  │  ├─ db.py                         # Database connection and schema management
-│  │  └─ scrape_core.py                # Playwright browser init and scraping logic
-├─ .env.example                        # Environment variables example
+│  │  ├─ 01_offers.sql                 # Job offers table definition
+│  │  └─ 02_offers_processed_view.sql  # Processed offers view definition
+│  └─ scraper/                         # Package for scraper functionality
+│     ├─ __main__.py                   # Package API
+│     ├─ cli.py                        # CLI module with argument parsing and orchestration
+│     ├─ db.py                         # Database connection and schema management
+│     └─ scrape_core.py                # Playwright browser init and scraping logic
+├─ venv/                               # Virtual environment (included)
+├─ .env.example                        # Environment variables template
+├─ .gitignore                          # Git ignore rules
+├─ .cursorignore                       # Cursor ignore rules
 ├─ requirements.txt                    # Python dependencies
 ├─ mypy.ini                            # Mypy configuration
 └─ README.md                           # Project documentation
@@ -97,10 +105,22 @@ Aligno/
 
 ## ⚙️ Configuration
 
-Create a `.env` file in the root directory with the following variables (copy from `.env.example`):
+Create a `.env` file in the root directory by copying from `.env.example` and updating with your actual values:
 
+### 🏗️ **Database Configuration Options:**
+
+#### **Option 1: AWS RDS (Recommended for production)**
 ```bash
-# Database Configuration
+# AWS RDS Configuration
+AWS_DB_ENDPOINT=your-rds-endpoint.amazonaws.com
+AWS_DB_NAME=aligno-db
+AWS_DB_USERNAME=your_db_username
+AWS_DB_PASSWORD=your_db_password
+```
+
+#### **Option 2: Local PostgreSQL Database**
+```bash
+# Local Database Configuration
 DATABASE_URL=postgresql://user:password@localhost:5432/aligno_db
 # Alternative: individual database settings
 DB_USER=aligno
@@ -108,9 +128,10 @@ DB_PASSWORD=your_password_here
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=aligno_db
+```
 
-
-# Scraper Configuration
+### 🎛️ **Scraper Configuration:**
+```bash
 HEADLESS=true  # Set to false for debugging (shows browser window)
 BATCH_SIZE=500  # Batch size for database operations
 SCROLL_PAUSE=0.512  # Pause between scrolls in seconds
@@ -119,15 +140,22 @@ SCRAPER_TIMEOUT=30000  # Timeout for page operations in milliseconds
 MAX_OFFERS=100  # Limit number of offers for debugging (None = no limit)
 ```
 
-### 🔒 Data Validation & Security
+### 🤖 **OpenAI Configuration (for future AI features):**
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_MAX_TOKENS=512
+OPENAI_TEMPERATURE=0.0
+```
 
-The application now includes comprehensive data validation using Pydantic models:
+### 🔒 Security Features
 
-- **Input Validation**: All scraped data is validated before database insertion
-- **Environment Validation**: Configuration is validated on startup
-- **SQL Injection Protection**: Database names and queries are sanitized
-- **Data Sanitization**: All string inputs are cleaned and validated
+The application includes basic security measures:
+
+- **SQL Injection Protection**: Database names are validated
+- **Data Sanitization**: String inputs are cleaned before processing
 - **Error Handling**: Robust error handling with proper logging
+- **AWS RDS Integration**: Secure connection to cloud databases
 
 ### 🐛 Debugging & Development
 
@@ -149,21 +177,63 @@ MAX_OFFERS=
 ### 🚨 Required Environment Variables
 
 The following environment variables are **required**:
-- Either `DATABASE_URL` OR `DB_PASSWORD` (if using individual DB settings)
+- Either `DATABASE_URL` OR `AWS_DB_ENDPOINT` with credentials OR `DB_PASSWORD` (if using individual DB settings)
+
+### 📋 Optional Environment Variables
+
+- `OPENAI_API_KEY`: Required for future AI-powered features (CV generation, skill matching)
+- `HEADLESS`: Set to `false` for debugging (shows browser window during scraping)
+- `MAX_OFFERS`: Limit number of offers for testing (leave empty for unlimited)
+
+## 🌐 AWS RDS Setup
+
+### **Prerequisites:**
+1. AWS RDS PostgreSQL instance running
+2. Security Group allowing inbound connections on port 5432
+3. Database created with appropriate user permissions
+
+### **Database Setup:**
+1. Connect to your RDS instance and run the SQL scripts from `src/sql/`:
+   ```sql
+   -- Run 01_offers.sql to create the offers table
+   -- Run 02_offers_processed_view.sql to create the view
+   ```
+
+2. Ensure your database user has the following permissions:
+   - `CREATE TABLE`
+   - `INSERT`, `UPDATE`, `DELETE` on the `offers` table
+   - `SELECT` on all tables
+
+### **Connection Testing:**
+```bash
+cd src
+../venv/bin/python -c "
+import asyncio
+from scraper.db import init_db_connection
+
+async def test():
+    try:
+        conn = await init_db_connection()
+        print('✅ AWS RDS connection successful!')
+        await conn.close()
+    except Exception as e:
+        print(f'❌ Connection failed: {e}')
+
+asyncio.run(test())
+"
+```
 
 ## 📑 Code Highlights
 
-- **validation/** - data validation and configuration management:
-   - `models.py`: Pydantic models for validating job offers and configuration
-   - `config.py`: Environment variable validation and configuration loading
-   - `validators.py`: Custom validators and data sanitization utilities
+- **src/scraper/** - scraper package:
+   - `__main__.py`: Package API for the scraper
+   - `cli.py`: CLI wrapper with environment checking and error handling
+   - `db.py`: Handles asyncpg connection, database creation, inserts and purges with AWS RDS support
+   - `scrape_core.py`: Contains browser initialization, scrolling, link collection, and offer parsing
 
-- **scraper/** - package that provides:
-   - `__main__.py`: package API for the scraper.
-   - `cli.py`: CLI wrapper with environment validation and error handling.
-   - `db.py`: handles asyncpg connection, database creation, inserts and purges with validation.
-   - `scrape_core.py`: contains browser initialization, scrolling, link collection, and validated offer parsing.
-
+- **src/sql/** - database schema:
+   - `01_offers.sql`: Job offers table definition
+   - `02_offers_processed_view.sql`: Processed offers view for analysis
 
 ## 📝 Future Improvements
 
@@ -196,3 +266,9 @@ The following environment variables are **required**:
    * To consider: Scheduling (cron/GitHub Actions)
    * To consider: Support for other job portals
    * To consider: Store configuration constants (URLs, timeouts, selectors) in `constants.py` or `config.toml`
+
+**Database:**
+   * Consider implementing skills normalization system
+   * Consider implementing skill matching algorithms for job recommendations
+   * Database migration scripts for production deployments
+   * Multi-region AWS RDS setup for high availability

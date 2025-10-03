@@ -4,16 +4,15 @@ import re
 from playwright.async_api import async_playwright, Browser, Page
 import logging
 
-try:
-    from ..validation.models import JobOfferData
-    from ..validation.validators import validate_job_offer_data, sanitize_string
-except ImportError:
-    # Fallback for direct execution
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from validation.models import JobOfferData
-    from validation.validators import validate_job_offer_data, sanitize_string
+def sanitize_string(value, max_length=None):
+    """Simple string sanitization without validation."""
+    if not value or not isinstance(value, str):
+        return None
+    # Basic cleanup
+    cleaned = value.strip()
+    if max_length and len(cleaned) > max_length:
+        cleaned = cleaned[:max_length]
+    return cleaned if cleaned else None
 
 SCROLL_PAUSE = 0.512
 SCROLL_STEP = None
@@ -24,144 +23,167 @@ async def init_browser(headless: bool = True):
     page = await browser.new_page()
     return playwright, browser, page
 
-async def get_scroll_step(page: Page) -> float:
+async def collect_offer_links(page: Page, max_links: int = None) -> list[str]:
     """
-    Calculates 80% of the viewport height to use as the scroll step.
-    """
-    viewport_height = await page.evaluate("() => window.innerHeight")
-    return float(viewport_height) * 0.8
-
-async def wait_for_new_offers(page: Page, seen_links: set[str]) -> bool:
-    """
-    Scrolls the page asynchronously until new job offer cards appear or until
-    no new offers are detected for MAX_IDLE consecutive scrolls.
-    Returns True if new offers found, False otherwise.
-    """
-    idle_count = 0
-    MAX_IDLE = 5
-    # Calculate scroll step if not set
-    global SCROLL_STEP
-    if SCROLL_STEP is None:
-        SCROLL_STEP = await get_scroll_step(page)
-    while True:
-        await page.mouse.wheel(0, SCROLL_STEP)
-        await asyncio.sleep(SCROLL_PAUSE)
-        offer_cards = await page.query_selector_all("a.offer-card")
-        new_found = False
-        for offer_card in offer_cards:
-            href = await offer_card.get_attribute("href")
-            if href and href not in seen_links:
-                new_found = True
-                break
-        if new_found:
-            return True
-        idle_count += 1
-        if idle_count >= MAX_IDLE:
-            return False
-        
-async def collect_offer_links(page: Page, max_offers: int = None) -> list[str]:
-    """
-    Scrolls and collects job offer links from the page asynchronously.
+    Collects job offer links from JustJoin.it by scrolling through the page.
     
     Args:
-        page: The Playwright page object
-        max_offers: Maximum number of offers to collect (None = no limit)
-    """
-    seen_links: set[str] = set()
-    collected_links = []
-    consecutive_no_new_count = 0
-    max_consecutive_no_new = 3  # Stop after 3 consecutive scrolls with no new offers
+        page: Playwright page object
+        max_links: Maximum number of links to collect (None for no limit)
     
-    while max_offers is None or len(collected_links) < max_offers:
-        has_new = await wait_for_new_offers(page, seen_links)
-        offer_cards = await page.query_selector_all("a.offer-card")
-        new_data = 0
+    Returns:
+        list[str]: List of job offer URLs
+    """
+    unique_urls = set()
+    idle_count = 0
+    max_idle = 3  # Reduced to 3 for faster testing
+    scroll_count = 0
+    
+    logging.info("🔄 Starting to collect job offer links...")
+    
+    # Wait for page to load initially
+    await asyncio.sleep(3)
+    
+    while scroll_count < 10:  # Limit total scrolls for safety
+        scroll_count += 1
+        logging.info(f"📊 Scroll {scroll_count}/10")
         
-        for offer_card in offer_cards:
-            href = await offer_card.get_attribute("href")
-            if not href or href in seen_links:
-                continue
-            seen_links.add(href)
-            collected_links.append(href)
-            new_data += 1
+        # Get current links and extract URLs
+        try:
+            # Wait a bit for content to load
+            await asyncio.sleep(2)
             
-            # Stop if we've reached the maximum
-            if max_offers is not None and len(collected_links) >= max_offers:
-                logging.info(f"Reached maximum limit of {max_offers} offers")
+            current_links = await page.locator('a[href*="/job-offer/"]').all()
+            current_urls = set()
+            
+            logging.info(f"🔍 Found {len(current_links)} link elements")
+            
+            for i, link in enumerate(current_links):
+                try:
+                    href = await link.get_attribute('href', timeout=2000)  # 2 second timeout
+                    if href and '/job-offer/' in href:
+                        if href.startswith('/'):
+                            href = f"https://justjoin.it{href}"
+                        current_urls.add(href)
+                        if len(current_urls) <= 5:  # Log first few URLs
+                            logging.info(f"  📎 {len(current_urls)}: {href}")
+                except Exception as e:
+                    # Skip this link and continue
+                    continue
+                    
+        except Exception as e:
+            logging.warning(f"⚠️ Error getting links: {e}")
+            current_urls = set()
+        
+        # Add new URLs to our collection
+        new_urls = current_urls - unique_urls
+        unique_urls.update(current_urls)
+        
+        logging.info(f"📊 Scroll {scroll_count}: Found {len(current_urls)} links on page, {len(unique_urls)} unique total")
+        
+        if new_urls:
+            logging.info(f"✅ Found {len(new_urls)} new unique links")
+            idle_count = 0
+        else:
+            idle_count += 1
+            logging.info(f"⏸️ No new links found (idle {idle_count}/{max_idle})")
+            
+            if idle_count >= max_idle:
+                logging.info("🛑 Stopping - no new links found for 3 consecutive scrolls")
                 break
         
-        logging.info(f"Total job offers found: {len(collected_links)}")
-        
-        # Check if we found new offers in this iteration
-        if new_data > 0:
-            consecutive_no_new_count = 0
-        else:
-            consecutive_no_new_count += 1
-            
-        # Stop if no new offers found for several consecutive scrolls
-        if not has_new or consecutive_no_new_count >= max_consecutive_no_new:
-            logging.info(f"Stopping collection: no new offers found for {consecutive_no_new_count} consecutive scrolls")
+        # Check if we've reached the limit
+        if max_links and len(unique_urls) >= max_links:
+            logging.info(f"✅ Reached maximum links limit: {max_links}")
             break
             
-        # Stop if we've reached the maximum
-        if max_offers is not None and len(collected_links) >= max_offers:
-            break
-            
-    return collected_links
+        # Scroll down
+        logging.info("⬇️ Scrolling down...")
+        await page.evaluate("window.scrollBy(0, window.innerHeight)")
+        await asyncio.sleep(SCROLL_PAUSE)
+    
+    offer_urls = list(unique_urls)
+    logging.info(f"✅ Collected {len(offer_urls)} unique job offer links")
+    return offer_urls
 
-async def process_offers(browser: Browser, new_links: list[str], existing_urls: set[str], conn, config) -> int:
+async def process_offers(page: Page, conn, offer_urls: list[str], max_offers: int = None) -> int:
     """
-    Visit each offer link asynchronously, extract job details, and save to database immediately.
-    Returns the number of successfully processed offers.
+    Process job offers and save them to the database.
+    
+    Args:
+        page: Playwright page object
+        conn: Database connection
+        offer_urls: List of job offer URLs to process
+        max_offers: Maximum number of offers to process (None for no limit)
+    
+    Returns:
+        int: Number of offers processed
     """
+    if max_offers:
+        offer_urls = offer_urls[:max_offers]
+        logging.info(f"🎯 Processing limited to {max_offers} offers")
+    
+    # Get existing URLs to avoid duplicates
+    existing_urls = set()
+    try:
+        existing_records = await conn.fetch("SELECT job_url FROM offers")
+        existing_urls = {record['job_url'] for record in existing_records}
+        logging.info(f"📊 Found {len(existing_urls)} existing offers in database")
+    except Exception as e:
+        logging.warning(f"⚠️ Could not fetch existing URLs: {e}")
+    
     processed_count = 0
-    for i, href in enumerate(new_links, start=1):
-        job_page = None
+    
+    for i, href in enumerate(offer_urls, 1):
         try:
-            job_url = "https://justjoin.it" + href
-            job_page = await browser.new_page()
-            await job_page.goto(job_url, timeout=30000)
-            await job_page.wait_for_selector("h1")
+            logging.info(f"🔄 Processing offer {i}/{len(offer_urls)}: {href}")
             
-            # Extract data using specific selectors
-            job_title = ""
-            company = ""
-            location = ""
-            category = ""
+            # Navigate to the offer page
+            await page.goto(href, wait_until='networkidle', timeout=30000)
             
-            # Get job title
+            # Wait for the page to load
+            await asyncio.sleep(1)
+            
+            # Extract job details
+            job_url = href
+            
+            # Job title
+            job_title = None
             try:
-                title_el = await job_page.query_selector('h1')
-                if title_el:
-                    job_title = await title_el.inner_text()
+                title_element = page.locator('h1').first
+                if await title_element.count() > 0:
+                    job_title = await title_element.inner_text()
             except Exception:
                 pass
             
-            # Get company name using XPath
+            # Category - use the specific XPath selector
+            category = None
             try:
-                company_element = await job_page.query_selector("xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[2]/div[2]/a/p")
-                if company_element:
+                category_element = page.locator('xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[2]/div[1]/div').first
+                if await category_element.count() > 0:
+                    category = await category_element.inner_text()
+            except Exception:
+                pass
+            
+            # Company - use the specific XPath selector
+            company = None
+            try:
+                company_element = page.locator('xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[2]/div[2]/a/p').first
+                if await company_element.count() > 0:
                     company = await company_element.inner_text()
             except Exception:
                 pass
             
-            # Get location using XPath
+            # Location - use the specific XPath selector
+            location = None
             try:
-                location_element = await job_page.query_selector("xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[2]/div/div/nav/ol/li[3]/a")
-                if location_element:
-                    # Get the full text content of the element
+                location_element = page.locator('xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[2]/div/div/nav/ol/li[3]/a').first
+                if await location_element.count() > 0:
                     location = await location_element.inner_text()
             except Exception:
                 pass
             
-            # Get category using XPath
-            try:
-                category_element = await job_page.query_selector("xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[2]/div[1]/div")
-                if category_element:
-                    category = await category_element.inner_text()
-            except Exception:
-                pass
-            # Extract salary information for different employment types
+            # Salary information - simple and effective approach
             salary_any = None
             salary_b2b = None
             salary_internship = None
@@ -170,195 +192,185 @@ async def process_offers(browser: Browser, new_links: list[str], existing_urls: 
             salary_specific_task = None
             
             try:
-                # Get all text content from the page and look for salary patterns
-                page_text = await job_page.evaluate("() => document.body.textContent || ''")
+                # Step 1: Find the div containing salary information
+                salary_container = page.locator('span:has-text("Salary")').first
                 
-                # Look for salary patterns with employment type context
-                # Pattern for B2B: "3 291 - 4 114 USD Net per month - B2B"
-                # Pattern for Permanent: "2 468 - 3 291 USD Gross per month - Permanent"
-                
-                # B2B patterns
-                b2b_patterns = [
-                    r'(\d+(?:\s+\d+)*)\s*-\s*(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*(?:Net|net)\s*per\s*(month|hour|day|year)\s*-\s*B2B',
-                    r'(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*(?:Net|net)\s*per\s*(month|hour|day|year)\s*-\s*B2B',
-                    r'(\d+(?:\s+\d+)*)\s*-\s*(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*-\s*B2B',
-                    r'(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*-\s*B2B'
-                ]
-                
-                # Permanent patterns
-                perm_patterns = [
-                    r'(\d+(?:\s+\d+)*)\s*-\s*(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*(?:Gross|gross)\s*per\s*(month|hour|day|year)\s*-\s*Permanent',
-                    r'(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*(?:Gross|gross)\s*per\s*(month|hour|day|year)\s*-\s*Permanent',
-                    r'(\d+(?:\s+\d+)*)\s*-\s*(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*-\s*Permanent',
-                    r'(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)\s*-\s*Permanent'
-                ]
-                
-                # General patterns (fallback)
-                general_patterns = [
-                    r'(\d+(?:\s+\d+)*)\s*-\s*(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)/(month|hour|day|year)',
-                    r'(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)/(month|hour|day|year)',
-                    r'(\d+(?:\s+\d+)*)\s*-\s*(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)',
-                    r'(\d+(?:\s+\d+)*)\s*(PLN|EUR|USD|zł)'
-                ]
-                
-                # Try B2B patterns first
-                for pattern in b2b_patterns:
-                    match = re.search(pattern, page_text, re.IGNORECASE)
-                    if match:
-                        if len(match.groups()) >= 3:
-                            if len(match.groups()) == 4:
-                                # Range format
-                                min_str = match.group(1).replace(' ', '')
-                                max_str = match.group(2).replace(' ', '')
-                                salary_b2b = f"{min_str} - {max_str} {match.group(3)}"
-                            else:
-                                # Single value
-                                amount_str = match.group(1).replace(' ', '')
-                                salary_b2b = f"{amount_str} {match.group(2)}"
-                        break
-                
-                # Try Permanent patterns
-                for pattern in perm_patterns:
-                    match = re.search(pattern, page_text, re.IGNORECASE)
-                    if match:
-                        if len(match.groups()) >= 3:
-                            if len(match.groups()) == 4:
-                                # Range format
-                                min_str = match.group(1).replace(' ', '')
-                                max_str = match.group(2).replace(' ', '')
-                                salary_perm = f"{min_str} - {max_str} {match.group(3)}"
-                            else:
-                                # Single value
-                                amount_str = match.group(1).replace(' ', '')
-                                salary_perm = f"{amount_str} {match.group(2)}"
-                        break
-                
-                # If no specific type found, try general patterns
-                if not salary_b2b and not salary_perm:
-                    for pattern in general_patterns:
-                        match = re.search(pattern, page_text, re.IGNORECASE)
-                        if match:
-                            if len(match.groups()) >= 3:
-                                if len(match.groups()) == 4:
-                                    # Range format
-                                    min_str = match.group(1).replace(' ', '')
-                                    max_str = match.group(2).replace(' ', '')
-                                    salary_any = f"{min_str} - {max_str} {match.group(3)}"
+                if await salary_container.count() > 0:
+                    # Step 2: Get all salary variants within the salary section
+                    # Look for the parent container that holds all salary variants
+                    parent_container = salary_container.locator('xpath=following-sibling::div[contains(@class,"mui-14zr2vc")]').first
+                    
+                    if await parent_container.count() > 0:
+                        # Find all individual salary blocks within this container
+                        salary_blocks = await parent_container.locator('xpath=.//div[contains(@class,"mui-1bzxsz6")]').all()
+                        
+                        print(f"🔍 Found {len(salary_blocks)} salary blocks")
+                        
+                        # Step 3: Process each salary variant
+                        for i, block in enumerate(salary_blocks):
+                            try:
+                                print(f"  🔍 Processing salary block {i+1}")
+                                
+                                # Get all text content from this block and parse it
+                                block_text = await block.inner_text()
+                                print(f"    📄 Block text: '{block_text}'")
+                                
+                                # Try to extract amount and type from the block text
+                                # Look for patterns like "20 000 PLN Net per month - B2B"
+                                import re
+                                
+                                # Pattern to match salary with amount, currency, and type
+                                salary_pattern = r'(\d+[\s,]?\d+)\s*(PLN|USD|EUR)\s*([^-]+)\s*-\s*([^-\n]+)'
+                                matches = re.findall(salary_pattern, block_text)
+                                
+                                if matches:
+                                    for match in matches:
+                                        amount = match[0].strip()
+                                        currency = match[1].strip()
+                                        description = match[2].strip()
+                                        salary_type = match[3].strip()
+                                        
+                                        salary_full = f"{amount} {currency} {description} - {salary_type}"
+                                        print(f"  💰 Salary variant {i+1}: {salary_full}")
+                                        
+                                        # Step 3: Assign to column based on what's after the hyphen
+                                        if 'B2B' in salary_type:
+                                            salary_b2b = salary_full
+                                            print(f"    ✅ Assigned to salary_b2b")
+                                        elif 'Permanent' in salary_type:
+                                            salary_perm = salary_full
+                                            print(f"    ✅ Assigned to salary_perm")
+                                        elif 'Internship' in salary_type:
+                                            salary_internship = salary_full
+                                            print(f"    ✅ Assigned to salary_internship")
+                                        elif 'Mandate' in salary_type or 'Umowa zlecenie' in salary_type:
+                                            salary_mandate = salary_full
+                                            print(f"    ✅ Assigned to salary_mandate")
+                                        else:
+                                            salary_any = salary_full
+                                            print(f"    ✅ Assigned to salary_any")
                                 else:
-                                    # Single value
-                                    amount_str = match.group(1).replace(' ', '')
-                                    salary_any = f"{amount_str} {match.group(2)}"
-                            break
-                        
+                                    # Fallback: try to extract the full range and look for type elsewhere
+                                    amount_range_match = re.search(r'(\d+[\s,]?\d+\s*-\s*\d+[\s,]?\d+)\s*(PLN|USD|EUR)', block_text)
+                                    if amount_range_match:
+                                        amount_range = amount_range_match.group(1).strip()
+                                        currency = amount_range_match.group(2).strip()
+                                        print(f"    💰 Found amount range: {amount_range} {currency}")
+                                        
+                                        # Look for type indicators in the text
+                                        if 'B2B' in block_text:
+                                            salary_b2b = f"{amount_range} {currency} - B2B"
+                                            print(f"    ✅ Assigned to salary_b2b")
+                                        elif 'Permanent' in block_text:
+                                            salary_perm = f"{amount_range} {currency} - Permanent"
+                                            print(f"    ✅ Assigned to salary_perm")
+                                        else:
+                                            salary_any = f"{amount_range} {currency}"
+                                            print(f"    ✅ Assigned to salary_any")
+                                    else:
+                                        print(f"    ❌ No salary pattern found in block {i+1}")
+                                    
+                            except Exception as e:
+                                print(f"    ❌ Error processing salary block {i+1}: {e}")
+                                continue
+                                
             except Exception as e:
-                print(f"Error extracting salary: {e}")
+                print(f"❌ Error in salary extraction: {e}")
                 pass
-            # Get work type, experience, employment type, and operating mode from the job details section
-            work_type = "N/A"
-            experience = "N/A"
-            employment_type = "N/A"
-            operating_mode = "N/A"
             
+            # Work type - use the specific XPath selector
+            work_type = None
             try:
-                # Find the container with job details
-                job_details_container = await job_page.query_selector("div.MuiBox-root.mui-1gtg48d")
-                if job_details_container:
-                    # Get all the job detail elements
-                    detail_elements = await job_details_container.query_selector_all("div.MuiStack-root.mui-aa3a55")
-                    
-                    # Extract text from each element
-                    details = []
-                    for element in detail_elements:
-                        text = await element.inner_text()
-                        if text and text.strip():
-                            details.append(text.strip())
-                    
-                    # Map the details to our fields
-                    # Based on the HTML structure, the order should be:
-                    # 1. Work type (Full-time)
-                    # 2. Employment type (B2B)
-                    # 3. Experience (Mid)
-                    # 4. Operating mode (Remote)
-                    
-                    if len(details) >= 1:
-                        work_type = details[0]
-                    if len(details) >= 2:
-                        employment_type = details[1]
-                    if len(details) >= 3:
-                        experience = details[2]
-                    if len(details) >= 4:
-                        operating_mode = details[3]
-                        
+                work_type_element = page.locator('xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[3]/div[1]/div[2]').first
+                if await work_type_element.count() > 0:
+                    work_type = await work_type_element.inner_text()
             except Exception:
                 pass
-            # Get tech stack - try multiple approaches
+            
+            # Experience - use the specific XPath selector
+            experience = None
+            try:
+                experience_element = page.locator('xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[3]/div[3]/div[2]').first
+                if await experience_element.count() > 0:
+                    experience = await experience_element.inner_text()
+            except Exception:
+                pass
+            
+            # Employment type - use the specific XPath selector
+            employment_type = None
+            try:
+                employment_element = page.locator('xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[3]/div[2]/div[2]').first
+                if await employment_element.count() > 0:
+                    employment_type = await employment_element.inner_text()
+            except Exception:
+                pass
+            
+            # Operating mode - already determined in location
+            operating_mode = None
+            try:
+                if location == 'Remote':
+                    operating_mode = 'Remote'
+                elif location == 'Hybrid':
+                    operating_mode = 'Hybrid'
+                elif location and location not in ['Remote', 'Hybrid']:
+                    operating_mode = 'Office'
+            except Exception:
+                pass
+            
+            # Tech stack - try multiple approaches to find tech items
             tech_stack = {}
-            tech_stack_selectors = [
-                "h3:text-is('Tech stack')",
-                "h3:has-text('Tech stack')",
-                "[data-testid*='tech-stack']",
-                "div:has-text('Tech stack')"
-            ]
-            
-            tech_stack_section = None
-            for selector in tech_stack_selectors:
-                try:
-                    tech_stack_header = await job_page.query_selector(selector)
-                    if tech_stack_header:
-                        tech_stack_section = await tech_stack_header.evaluate_handle("el => el.parentElement")
-                        break
-                except Exception:
-                    continue
-            
-            if tech_stack_section:
-                # Try multiple selectors for skill blocks
-                skill_block_selectors = [
-                    "div[class*='jfr3nf']",
-                    "div[class*='skill']",
-                    "div[class*='tech']",
-                    "div"
-                ]
-                
-                skill_blocks = []
-                for selector in skill_block_selectors:
+            try:
+                # Approach 1: Look for h4 elements that might be tech names
+                tech_names = await page.locator('h4').all()
+                for name_elem in tech_names:
                     try:
-                        blocks = await tech_stack_section.query_selector_all(selector)
-                        if blocks:
-                            skill_blocks = blocks
-                            break
-                    except Exception:
+                        name_text = await name_elem.inner_text()
+                        if name_text and name_text.strip():
+                            # Look for span element in the same parent
+                            parent = name_elem.locator('..')
+                            span_elem = parent.locator('span').first
+                            if await span_elem.count() > 0:
+                                level_text = await span_elem.inner_text()
+                                if level_text and level_text.strip():
+                                    tech_stack[name_text.strip()] = level_text.strip()
+                    except:
                         continue
-                
-                for block in skill_blocks:
-                    try:
-                        name_element = await block.query_selector("h4")
-                        if not name_element:
-                            # Try other selectors for skill name
-                            name_selectors = ["h4", "h3", "h2", "span", "div"]
-                            for name_sel in name_selectors:
-                                name_element = await block.query_selector(name_sel)
-                                if name_element:
-                                    break
                         
-                        if name_element:
-                            name = (await name_element.inner_text()).strip()
-                            if name and len(name) > 0:
-                                # Try to get description
-                                description_element = await block.query_selector("ul + span")
-                                if not description_element:
-                                    description_element = await block.query_selector("span")
+                # If no tech found, try approach 2: look for specific patterns
+                if not tech_stack:
+                    # Look for elements that contain both h4 and span
+                    tech_containers = page.locator('div').all()
+                    for container in tech_containers[:20]:  # Limit to first 20
+                        try:
+                            h4_elem = container.locator('h4').first
+                            span_elem = container.locator('span').first
+                            
+                            if await h4_elem.count() > 0 and await span_elem.count() > 0:
+                                name = await h4_elem.inner_text()
+                                level = await span_elem.inner_text()
                                 
-                                desc = "N/A"
-                                if description_element:
-                                    desc = await description_element.inner_text()
-                                
-                                tech_stack[name] = desc
-                    except Exception:
-                        continue
-            # Prepare data for validation
+                                if name and level and name.strip() and level.strip():
+                                    # Skip if it looks like a tech stack item
+                                    if len(name) < 50 and len(level) < 20:
+                                        tech_stack[name.strip()] = level.strip()
+                        except:
+                            continue
+            except Exception:
+                pass
+            
+            # Prepare offer data
             tech_stack_formatted = "; ".join(
-                f"{name}: {desc}" for name, desc in tech_stack.items()
+                f"{name}: {level}" for name, level in tech_stack.items()
             )
+            
+            # Debug: Log extracted data
+            logging.info(f"📊 Extracted data for {job_title}:")
+            logging.info(f"  Company: {company}")
+            logging.info(f"  Location: {location}")
+            logging.info(f"  Salary B2B: {salary_b2b}")
+            logging.info(f"  Salary Permanent: {salary_perm}")
+            logging.info(f"  Salary Other: {salary_any}")
+            logging.info(f"  Tech Stack: {tech_stack_formatted}")
             
             # Sanitize and prepare offer data
             offer_data = {
@@ -380,44 +392,40 @@ async def process_offers(browser: Browser, new_links: list[str], existing_urls: 
                 "tech_stack": sanitize_string(tech_stack_formatted)
             }
             
-            # Validate offer data before saving
-            try:
-                validated_offer = validate_job_offer_data(offer_data)
-                logging.info(f"{i}: {validated_offer.job_title}")
-                
-                # Save to database immediately if it's a new offer
-                if job_url not in existing_urls:
-                    try:
-                        await conn.execute(
-                            """
-                            INSERT INTO offers (job_url, job_title, category, company, location, salary_any, salary_b2b, salary_internship, salary_mandate, salary_perm, salary_specific_task, work_type, experience, employment_type, operating_mode, tech_stack)
-                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-                            ON CONFLICT (job_url) DO NOTHING
-                            """,
-                            validated_offer.job_url, validated_offer.job_title, validated_offer.category, 
-                            validated_offer.company, validated_offer.location, validated_offer.salary_any, 
-                            validated_offer.salary_b2b, validated_offer.salary_internship, validated_offer.salary_mandate, 
-                            validated_offer.salary_perm, validated_offer.salary_specific_task, validated_offer.work_type, 
-                            validated_offer.experience, validated_offer.employment_type, validated_offer.operating_mode, 
-                            validated_offer.tech_stack
-                        )
-                        existing_urls.add(job_url)
-                        processed_count += 1
-                        if processed_count % 10 == 0:  # Log progress every 10 offers
-                            logging.info(f"✅ Saved {processed_count} offers to database")
-                    except Exception as db_error:
-                        logging.error(f"Database error saving offer {job_url}: {db_error}")
-                        # If it's a connection error, we'll let the caller handle reconnection
-                        if "connection is closed" in str(db_error).lower():
-                            raise db_error
-                            
-            except ValueError as validation_error:
-                logging.error(f"Validation failed for offer {job_url}: {validation_error}")
-                # Skip this offer but continue processing others
-                continue
+            # Log offer data
+            logging.info(f"{i}: {offer_data.get('job_title', 'Unknown title')}")
+            
+            # Save to database immediately if it's a new offer
+            if job_url not in existing_urls:
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO offers (job_url, job_title, category, company, location, salary_any, salary_b2b, salary_internship, salary_mandate, salary_perm, salary_specific_task, work_type, experience, employment_type, operating_mode, tech_stack)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                        ON CONFLICT (job_url) DO NOTHING
+                        """,
+                        offer_data["job_url"], offer_data["job_title"], offer_data["category"], 
+                        offer_data["company"], offer_data["location"], offer_data["salary_any"], 
+                        offer_data["salary_b2b"], offer_data["salary_internship"], offer_data["salary_mandate"], 
+                        offer_data["salary_perm"], offer_data["salary_specific_task"], offer_data["work_type"], 
+                        offer_data["experience"], offer_data["employment_type"], offer_data["operating_mode"], 
+                        offer_data["tech_stack"]
+                    )
+                    existing_urls.add(job_url)
+                    processed_count += 1
+                    if processed_count % 10 == 0:  # Log progress every 10 offers
+                        logging.info(f"✅ Saved {processed_count} offers to database")
+                except Exception as db_error:
+                    logging.error(f"Database error saving offer {job_url}: {db_error}")
+                    # If it's a connection error, we'll let the caller handle reconnection
+                    if "connection is closed" in str(db_error).lower():
+                        raise db_error
+                        
         except Exception as e:
             logging.error(f"Error processing job offer {href}: {e}")
         finally:
-            if job_page:
-                await job_page.close()
+            # Small delay between requests to be respectful
+            await asyncio.sleep(0.5)
+    
+    logging.info(f"✅ Processed {processed_count} new offers")
     return processed_count
