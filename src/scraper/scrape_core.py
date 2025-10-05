@@ -44,9 +44,8 @@ async def collect_offer_links(page: Page, max_links: int = None) -> list[str]:
     # Wait for page to load initially
     await asyncio.sleep(3)
     
-    while scroll_count < 10:  # Limit total scrolls for safety
+    while scroll_count < 1:  # Limit total scrolls for safety
         scroll_count += 1
-        logging.info(f"📊 Scroll {scroll_count}/10")
         
         # Get current links and extract URLs
         try:
@@ -98,7 +97,6 @@ async def collect_offer_links(page: Page, max_links: int = None) -> list[str]:
             break
             
         # Scroll down
-        logging.info("⬇️ Scrolling down...")
         await page.evaluate("window.scrollBy(0, window.innerHeight)")
         await asyncio.sleep(SCROLL_PAUSE)
     
@@ -183,97 +181,47 @@ async def process_offers(page: Page, conn, offer_urls: list[str], max_offers: in
             except Exception:
                 pass
             
-            # Salary information - simple and effective approach
+            # Initialize all salary variables
             salary_any = None
             salary_b2b = None
             salary_internship = None
             salary_mandate = None
-            salary_perm = None
+            salary_permanent = None
             salary_specific_task = None
             
+            # Salary extraction - check all spans with " per "
             try:
-                # Step 1: Find the div containing salary information
-                salary_container = page.locator('span:has-text("Salary")').first
+                spans = await page.locator('span:has-text(" per ")').all()
+                any_pattern = r'.*per.*- Any$'
+                b2b_pattern = r'.*per.*- B2B$'
+                internship_pattern = r'.*per.*- Internship$'
+                mandate_pattern = r'.*per.*- Mandate$'
+                permanent_pattern = r'.*per.*- Permanent$'
+                specific_task_pattern = r'.*per.*- Specific Task$'
                 
-                if await salary_container.count() > 0:
-                    # Step 2: Get all salary variants within the salary section
-                    # Look for the parent container that holds all salary variants
-                    parent_container = salary_container.locator('xpath=following-sibling::div[contains(@class,"mui-14zr2vc")]').first
-                    
-                    if await parent_container.count() > 0:
-                        # Find all individual salary blocks within this container
-                        salary_blocks = await parent_container.locator('xpath=.//div[contains(@class,"mui-1bzxsz6")]').all()
-                        
-                        print(f"🔍 Found {len(salary_blocks)} salary blocks")
-                        
-                        # Step 3: Process each salary variant
-                        for i, block in enumerate(salary_blocks):
-                            try:
-                                print(f"  🔍 Processing salary block {i+1}")
-                                
-                                # Get all text content from this block and parse it
-                                block_text = await block.inner_text()
-                                print(f"    📄 Block text: '{block_text}'")
-                                
-                                # Try to extract amount and type from the block text
-                                # Look for patterns like "20 000 PLN Net per month - B2B"
-                                import re
-                                
-                                # Pattern to match salary with amount, currency, and type
-                                salary_pattern = r'(\d+[\s,]?\d+)\s*(PLN|USD|EUR)\s*([^-]+)\s*-\s*([^-\n]+)'
-                                matches = re.findall(salary_pattern, block_text)
-                                
-                                if matches:
-                                    for match in matches:
-                                        amount = match[0].strip()
-                                        currency = match[1].strip()
-                                        description = match[2].strip()
-                                        salary_type = match[3].strip()
-                                        
-                                        salary_full = f"{amount} {currency} {description} - {salary_type}"
-                                        print(f"  💰 Salary variant {i+1}: {salary_full}")
-                                        
-                                        # Step 3: Assign to column based on what's after the hyphen
-                                        if 'B2B' in salary_type:
-                                            salary_b2b = salary_full
-                                            print(f"    ✅ Assigned to salary_b2b")
-                                        elif 'Permanent' in salary_type:
-                                            salary_perm = salary_full
-                                            print(f"    ✅ Assigned to salary_perm")
-                                        elif 'Internship' in salary_type:
-                                            salary_internship = salary_full
-                                            print(f"    ✅ Assigned to salary_internship")
-                                        elif 'Mandate' in salary_type or 'Umowa zlecenie' in salary_type:
-                                            salary_mandate = salary_full
-                                            print(f"    ✅ Assigned to salary_mandate")
-                                        else:
-                                            salary_any = salary_full
-                                            print(f"    ✅ Assigned to salary_any")
-                                else:
-                                    # Fallback: try to extract the full range and look for type elsewhere
-                                    amount_range_match = re.search(r'(\d+[\s,]?\d+\s*-\s*\d+[\s,]?\d+)\s*(PLN|USD|EUR)', block_text)
-                                    if amount_range_match:
-                                        amount_range = amount_range_match.group(1).strip()
-                                        currency = amount_range_match.group(2).strip()
-                                        print(f"    💰 Found amount range: {amount_range} {currency}")
-                                        
-                                        # Look for type indicators in the text
-                                        if 'B2B' in block_text:
-                                            salary_b2b = f"{amount_range} {currency} - B2B"
-                                            print(f"    ✅ Assigned to salary_b2b")
-                                        elif 'Permanent' in block_text:
-                                            salary_perm = f"{amount_range} {currency} - Permanent"
-                                            print(f"    ✅ Assigned to salary_perm")
-                                        else:
-                                            salary_any = f"{amount_range} {currency}"
-                                            print(f"    ✅ Assigned to salary_any")
-                                    else:
-                                        print(f"    ❌ No salary pattern found in block {i+1}")
-                                    
-                            except Exception as e:
-                                print(f"    ❌ Error processing salary block {i+1}: {e}")
-                                continue
-                                
+                for span in spans:
+                    try:
+                        span_text = await span.inner_text()
+                        if re.match(any_pattern, span_text.strip(), re.IGNORECASE):
+                            parent_div = span.locator('xpath=..')
+                            salary_any = await parent_div.inner_text()
+                        elif re.match(b2b_pattern, span_text.strip(), re.IGNORECASE):
+                            parent_div = span.locator('xpath=..')
+                            salary_b2b = await parent_div.inner_text()
+                        elif re.match(internship_pattern, span_text.strip(), re.IGNORECASE):
+                            parent_div = span.locator('xpath=..')
+                            salary_internship = await parent_div.inner_text()
+                        elif re.match(mandate_pattern, span_text.strip(), re.IGNORECASE):
+                            parent_div = span.locator('xpath=..')
+                            salary_mandate = await parent_div.inner_text()
+                        elif re.match(permanent_pattern, span_text.strip(), re.IGNORECASE):
+                            parent_div = span.locator('xpath=..')
+                            salary_permanent = await parent_div.inner_text()
+                        elif re.match(specific_task_pattern, span_text.strip(), re.IGNORECASE):
+                            parent_div = span.locator('xpath=..')
+                            salary_specific_task = await parent_div.inner_text()
+                    except Exception as span_error:
+                        continue
             except Exception as e:
                 print(f"❌ Error in salary extraction: {e}")
                 pass
@@ -365,12 +313,6 @@ async def process_offers(page: Page, conn, offer_urls: list[str], max_offers: in
             
             # Debug: Log extracted data
             logging.info(f"📊 Extracted data for {job_title}:")
-            logging.info(f"  Company: {company}")
-            logging.info(f"  Location: {location}")
-            logging.info(f"  Salary B2B: {salary_b2b}")
-            logging.info(f"  Salary Permanent: {salary_perm}")
-            logging.info(f"  Salary Other: {salary_any}")
-            logging.info(f"  Tech Stack: {tech_stack_formatted}")
             
             # Sanitize and prepare offer data
             offer_data = {
@@ -383,7 +325,7 @@ async def process_offers(page: Page, conn, offer_urls: list[str], max_offers: in
                 "salary_b2b": sanitize_string(salary_b2b),
                 "salary_internship": sanitize_string(salary_internship),
                 "salary_mandate": sanitize_string(salary_mandate),
-                "salary_perm": sanitize_string(salary_perm),
+                "salary_perm": sanitize_string(salary_permanent),
                 "salary_specific_task": sanitize_string(salary_specific_task),
                 "work_type": sanitize_string(work_type),
                 "experience": sanitize_string(experience),
@@ -412,9 +354,6 @@ async def process_offers(page: Page, conn, offer_urls: list[str], max_offers: in
                         offer_data["tech_stack"]
                     )
                     existing_urls.add(job_url)
-                    processed_count += 1
-                    if processed_count % 10 == 0:  # Log progress every 10 offers
-                        logging.info(f"✅ Saved {processed_count} offers to database")
                 except Exception as db_error:
                     logging.error(f"Database error saving offer {job_url}: {db_error}")
                     # If it's a connection error, we'll let the caller handle reconnection
