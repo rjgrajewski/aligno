@@ -62,7 +62,7 @@ async def main():
     try:
         # Collect job offer links
         offer_urls = await collect_offer_links(page)
-        
+ 
         if not offer_urls:
             logging.warning("⚠️ No job offer links found")
             return

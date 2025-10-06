@@ -93,7 +93,7 @@ async def init_db_connection() -> asyncpg.Connection:
             logging.info(f"✅ Created local database: {db_name}")
 
     # Ensure the offers table exists
-    schema_path = Path(__file__).parent.parent / "sql" / "01_offers.sql"
+    schema_path = Path(__file__).parent.parent / "sql" / "tables" / "offers.sql"
     if schema_path.exists():
         ddl = schema_path.read_text()
         await conn.execute(ddl)

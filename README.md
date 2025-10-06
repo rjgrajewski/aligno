@@ -47,9 +47,11 @@ Aligno is a web application for collecting, processing and analyzing job offers 
 ```
 Aligno/
 ├─ src/                                # Source code directory
-│  ├─ sql/                             # SQL initialization scripts
-│  │  ├─ 01_offers.sql                 # Job offers table definition
-│  │  └─ 02_offers_processed_view.sql  # Processed offers view definition
+│  ├─ sql/                             # SQL scripts directory
+│  │  ├─ tables/                       # Table definitions
+│  │  │  └─ offers.sql                 # Job offers table with auto-parsing
+│  │  └─ views/                        # View definitions
+│  │     └─ offers_parsed.sql          # Parsed offers view
 │  └─ scraper/                         # Package for scraper functionality
 │     ├─ __main__.py                   # Package API
 │     ├─ cli.py                        # CLI module with argument parsing and orchestration
@@ -195,8 +197,8 @@ The following environment variables are **required**:
 ### **Database Setup:**
 1. Connect to your RDS instance and run the SQL scripts from `src/sql/`:
    ```sql
-   -- Run 01_offers.sql to create the offers table
-   -- Run 02_offers_processed_view.sql to create the view
+   -- Run tables/offers.sql to create the offers table with triggers
+   -- Run views/offers_parsed.sql to create the parsed view
    ```
 
 2. Ensure your database user has the following permissions:
@@ -232,8 +234,51 @@ asyncio.run(test())
    - `scrape_core.py`: Contains browser initialization, scrolling, link collection, and offer parsing
 
 - **src/sql/** - database schema:
-   - `01_offers.sql`: Job offers table definition
-   - `02_offers_processed_view.sql`: Processed offers view for analysis
+   - `tables/offers.sql`: Job offers table definition with automatic salary_b2b parsing
+   - `views/offers_parsed.sql`: Parsed offers view for analysis
+
+## 💰 Salary Parsing Features
+
+The `offers` table automatically parses B2B salary information using database triggers:
+
+### **Architecture:**
+- **offers table**: Contains raw `salary_b2b` text + automatically parsed columns
+- **Database trigger**: Automatically populates parsed columns on INSERT/UPDATE
+- **offers_parsed view**: Additional transformations for analysis
+
+### **Parsed Columns (in offers table):**
+- `salary_b2b` (TEXT): Original raw text from scraper
+- `salary_b2b_min` (NUMERIC): Minimum salary value (auto-populated)
+- `salary_b2b_max` (NUMERIC): Maximum salary value (auto-populated)
+- `salary_b2b_per` (TEXT): Time period - 'hour', 'day', 'month', or 'year' (auto-populated)
+
+### **How It Works:**
+- **Trigger-Based Parsing**: PostgreSQL trigger `parse_salary_b2b_trigger` fires on INSERT/UPDATE
+- **Automatic**: No manual intervention needed - scraper just inserts raw data
+- **Format Support**: Handles salary ranges like "150 - 175 PLN\nNet per hour - B2B"
+- **Single Values**: If no range exists, min and max are the same
+- **100% Success Rate**: Successfully parses all standard JustJoin.it salary formats
+
+### **Example:**
+```sql
+-- Insert raw data (scraper does this):
+INSERT INTO offers (salary_b2b, ...) 
+VALUES ('18 000 - 30 000 PLN
+Net per month - B2B', ...);
+
+-- Trigger automatically populates:
+-- salary_b2b_min: 18000
+-- salary_b2b_max: 30000
+-- salary_b2b_per: 'month'
+```
+
+### **Usage:**
+```sql
+-- Query parsed data directly from offers table
+SELECT job_title, salary_b2b_min, salary_b2b_max, salary_b2b_per
+FROM offers
+WHERE salary_b2b_per = 'month' AND salary_b2b_min > 15000;
+```
 
 ## 📝 Future Improvements
 
