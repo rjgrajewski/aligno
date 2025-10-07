@@ -9,6 +9,9 @@ from .config import ScrapingConfig
 # Load environment variables from .env file
 load_dotenv()
 
+# Logging configuration
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
 async def main():
     """
     Main entry point for scraping JustJoin.it job offers.

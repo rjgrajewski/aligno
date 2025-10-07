@@ -8,7 +8,7 @@ class ScrapingConfig:
     """Configuration constants for scraping behavior."""
     
     # Browser configuration
-    HEADLESS = 'true'
+    HEADLESS = True
     
     # Scraping limits
     SCROLL_PAUSE_TIME = 0.05
