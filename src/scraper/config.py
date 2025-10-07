@@ -12,9 +12,9 @@ class ScrapingConfig:
     
     # Scraping limits
     SCROLL_PAUSE_TIME = 0.05
-    MAX_IDLE_SCROLLS = 100
+    MAX_IDLE_SCROLLS = 1
     
     # Timeouts
     LINK_TIMEOUT = 2000  # 2 seconds
-    PAGE_LOAD_TIMEOUT = 10000  # 10 seconds
+    PAGE_LOAD_TIMEOUT = 60000  # 60 seconds
     REQUEST_DELAY = 0.5  # 0.5 seconds between requests

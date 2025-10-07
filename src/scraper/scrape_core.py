@@ -142,25 +142,8 @@ async def process_offers(page: Page, conn, offer_urls: list[str]) -> int:
                 title_element = page.locator(get_selector(SELECTORS.JOB_TITLE)).first
                 if await title_element.count() > 0:
                     job_title = await title_element.inner_text()
-            except Exception:
-                pass
-            
-            # Category - use the specific XPath selector
-            category = None
-            try:
-                category_element = page.locator(get_selector(SELECTORS.CATEGORY)).first
-                if await category_element.count() > 0:
-                    category = await category_element.inner_text()
-            except Exception:
-                pass
-            
-            # Company - look for link with ApartmentRoundedIcon
-            company = None
-            try:
-                company_element = page.locator(get_selector(SELECTORS.COMPANY)).first
-                if await company_element.count() > 0:
-                    company = await company_element.inner_text()
-            except Exception:
+            except Exception as e:
+                logging.error(f"❌ Error in job title extraction: {e}")
                 pass
             
             # Location - use the specific XPath selector
@@ -169,8 +152,116 @@ async def process_offers(page: Page, conn, offer_urls: list[str]) -> int:
                 location_element = page.locator(get_selector(SELECTORS.LOCATION)).first
                 if await location_element.count() > 0:
                     location = await location_element.inner_text()
-            except Exception:
+            except Exception as e:
+                logging.error(f"❌ Error in location extraction: {e}")
                 pass
+            
+            # Company - look for link with ApartmentRoundedIcon
+            company = None
+            try:
+                company_element = page.locator(get_selector(SELECTORS.COMPANY)).first
+                if await company_element.count() > 0:
+                    company = await company_element.inner_text()
+            except Exception as e:
+                logging.error(f"❌ Error in company extraction: {e}")
+                pass
+            
+            # Category - use the specific XPath selector
+            category = None
+            try:
+                category_element = page.locator(get_selector(SELECTORS.CATEGORY)).first
+                if await category_element.count() > 0:
+                    category = await category_element.inner_text()
+            except Exception as e:
+                logging.error(f"❌ Error in category extraction: {e}")
+                pass
+            
+            # Work type - use the specific XPath selector
+            work_type = None
+            try:
+                work_type_element = page.locator(get_selector(SELECTORS.WORK_TYPE)).first
+                if await work_type_element.count() > 0:
+                    work_type = await work_type_element.inner_text()
+            except Exception as e:
+                logging.error(f"❌ Error in work type extraction: {e}")
+                pass
+            
+            # Employment type - use the specific XPath selector
+            employment_type = None
+            try:
+                employment_element = page.locator(get_selector(SELECTORS.EMPLOYMENT_TYPE)).first
+                if await employment_element.count() > 0:
+                    employment_type = await employment_element.inner_text()
+            except Exception as e:
+                logging.error(f"❌ Error in employment type extraction: {e}")
+                pass
+            
+            # Experience - use the specific XPath selector
+            experience = None
+            try:
+                experience_element = page.locator(get_selector(SELECTORS.EXPERIENCE)).first
+                if await experience_element.count() > 0:
+                    experience = await experience_element.inner_text()
+            except Exception as e:
+                logging.error(f"❌ Error in experience extraction: {e}")
+                pass
+            
+            # Operating mode - already determined in location
+            operating_mode = None
+            try:
+                operating_mode_element = page.locator(get_selector(SELECTORS.OPERATING_MODE)).first
+                if await operating_mode_element.count() > 0:
+                    operating_mode = await operating_mode_element.inner_text()
+            except Exception as e:
+                logging.error(f"❌ Error in operating mode extraction: {e}")
+                pass
+            
+            # Tech stack - try multiple approaches to find tech items
+            tech_stack = {}
+            try:
+                # Approach 1: Look for h4 elements that might be tech names
+                tech_names = await page.locator(get_selector(SELECTORS.TECH_NAMES)).all()
+                for name_elem in tech_names:
+                    try:
+                        name_text = await name_elem.inner_text()
+                        if name_text and name_text.strip():
+                            # Look for span element in the same parent
+                            parent = name_elem.locator('..')
+                            span_elem = parent.locator(get_selector(SELECTORS.TECH_LEVELS)).first
+                            if await span_elem.count() > 0:
+                                level_text = await span_elem.inner_text()
+                                if level_text and level_text.strip():
+                                    tech_stack[name_text.strip()] = level_text.strip()
+                    except:
+                        continue
+                        
+                # If no tech found, try approach 2: look for specific patterns
+                if not tech_stack:
+                    # Look for elements that contain both h4 and span
+                    tech_containers = await page.locator(get_selector(SELECTORS.TECH_CONTAINERS)).all()
+                    for container in tech_containers[:20]:  # Limit to first 20
+                        try:
+                            h4_elem = container.locator(get_selector(SELECTORS.TECH_NAMES)).first
+                            span_elem = container.locator(get_selector(SELECTORS.TECH_LEVELS)).first
+                            
+                            if await h4_elem.count() > 0 and await span_elem.count() > 0:
+                                name = await h4_elem.inner_text()
+                                level = await span_elem.inner_text()
+                                
+                                if name and level and name.strip() and level.strip():
+                                    # Skip if it looks like a tech stack item
+                                    if len(name) < 50 and len(level) < 20:
+                                        tech_stack[name.strip()] = level.strip()
+                        except:
+                            continue
+            except Exception as e:
+                logging.error(f"❌ Error in tech stack extraction: {e}")
+                pass
+            
+            # Prepare offer data
+            tech_stack_formatted = "; ".join(
+                f"{name}: {level}" for name, level in tech_stack.items()
+            )
             
             # Initialize all salary variables
             salary_any = None
@@ -216,91 +307,6 @@ async def process_offers(page: Page, conn, offer_urls: list[str]) -> int:
             except Exception as e:
                 logging.error(f"❌ Error in salary extraction: {e}")
                 pass
-            
-            # Work type - use the specific XPath selector
-            work_type = None
-            try:
-                work_type_element = page.locator(get_selector(SELECTORS.WORK_TYPE)).first
-                if await work_type_element.count() > 0:
-                    work_type = await work_type_element.inner_text()
-            except Exception:
-                pass
-            
-            # Experience - use the specific XPath selector
-            experience = None
-            try:
-                experience_element = page.locator(get_selector(SELECTORS.EXPERIENCE)).first
-                if await experience_element.count() > 0:
-                    experience = await experience_element.inner_text()
-            except Exception:
-                pass
-            
-            # Employment type - use the specific XPath selector
-            employment_type = None
-            try:
-                employment_element = page.locator(get_selector(SELECTORS.EMPLOYMENT_TYPE)).first
-                if await employment_element.count() > 0:
-                    employment_type = await employment_element.inner_text()
-            except Exception:
-                pass
-            
-            # Operating mode - already determined in location
-            operating_mode = None
-            try:
-                if location == 'Remote':
-                    operating_mode = 'Remote'
-                elif location == 'Hybrid':
-                    operating_mode = 'Hybrid'
-                elif location and location not in ['Remote', 'Hybrid']:
-                    operating_mode = 'Office'
-            except Exception:
-                pass
-            
-            # Tech stack - try multiple approaches to find tech items
-            tech_stack = {}
-            try:
-                # Approach 1: Look for h4 elements that might be tech names
-                tech_names = await page.locator(get_selector(SELECTORS.TECH_NAMES)).all()
-                for name_elem in tech_names:
-                    try:
-                        name_text = await name_elem.inner_text()
-                        if name_text and name_text.strip():
-                            # Look for span element in the same parent
-                            parent = name_elem.locator('..')
-                            span_elem = parent.locator(get_selector(SELECTORS.TECH_LEVELS)).first
-                            if await span_elem.count() > 0:
-                                level_text = await span_elem.inner_text()
-                                if level_text and level_text.strip():
-                                    tech_stack[name_text.strip()] = level_text.strip()
-                    except:
-                        continue
-                        
-                # If no tech found, try approach 2: look for specific patterns
-                if not tech_stack:
-                    # Look for elements that contain both h4 and span
-                    tech_containers = await page.locator(get_selector(SELECTORS.TECH_CONTAINERS)).all()
-                    for container in tech_containers[:20]:  # Limit to first 20
-                        try:
-                            h4_elem = container.locator(get_selector(SELECTORS.TECH_NAMES)).first
-                            span_elem = container.locator(get_selector(SELECTORS.TECH_LEVELS)).first
-                            
-                            if await h4_elem.count() > 0 and await span_elem.count() > 0:
-                                name = await h4_elem.inner_text()
-                                level = await span_elem.inner_text()
-                                
-                                if name and level and name.strip() and level.strip():
-                                    # Skip if it looks like a tech stack item
-                                    if len(name) < 50 and len(level) < 20:
-                                        tech_stack[name.strip()] = level.strip()
-                        except:
-                            continue
-            except Exception:
-                pass
-            
-            # Prepare offer data
-            tech_stack_formatted = "; ".join(
-                f"{name}: {level}" for name, level in tech_stack.items()
-            )
 
             # Sanitize and prepare offer data
             offer_data = {

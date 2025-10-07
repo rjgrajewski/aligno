@@ -47,6 +47,11 @@ class JustJoinItSelectors:
         primary='span:has-text(" per ")',
         description="Spans containing salary information with 'per' text"
     )
+
+    OPERATING_MODE = SelectorConfig(
+        primary='xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[3]/div[4]/div[2]',
+        description="Operating mode information"
+    )
     
     WORK_TYPE = SelectorConfig(
         primary='xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[3]/div[1]/div[2]',

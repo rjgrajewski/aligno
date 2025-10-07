@@ -26,7 +26,7 @@ async def main():
     conn = await init_db_connection()
     playwright, browser, page = await init_browser(headless=ScrapingConfig.HEADLESS)
 
-    await page.goto("https://justjoin.it/job-offers")
+    await page.goto("https://justjoin.it/job-offers", timeout=ScrapingConfig.PAGE_LOAD_TIMEOUT)
 
     try:
         # Collect job offer links
