@@ -4,9 +4,11 @@ Configuration constants for the scraper.
 This module contains all configurable parameters used throughout the scraping process.
 """
 
-
 class ScrapingConfig:
     """Configuration constants for scraping behavior."""
+    
+    # Browser configuration
+    HEADLESS = 'true'
     
     # Scraping limits
     SCROLL_PAUSE_TIME = 0.05

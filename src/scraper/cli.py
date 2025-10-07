@@ -4,26 +4,10 @@ from dotenv import load_dotenv
 
 from .db import init_db_connection, check_connection, reconnect_db, cleanup_empty_offers
 from .scrape_core import init_browser, collect_offer_links, process_offers
+from .config import ScrapingConfig
 
 # Load environment variables from .env file
 load_dotenv()
-
-def check_required_env_vars():
-    """Check if required environment variables are set."""
-    # Check for AWS RDS configuration first
-    aws_endpoint = os.getenv('AWS_DB_ENDPOINT')
-    aws_username = os.getenv('AWS_DB_USERNAME')
-    aws_password = os.getenv('AWS_DB_PASSWORD')
-    aws_db_name = os.getenv('AWS_DB_NAME')
-    
-    if aws_endpoint and aws_username and aws_password and aws_db_name:
-        return  # AWS configuration is complete
-    
-    # No valid configuration found
-    raise ValueError("Missing required environment variables. Please set AWS_DB_ENDPOINT, AWS_DB_USERNAME, AWS_DB_PASSWORD, and AWS_DB_NAME, or set DATABASE_URL.")
-
-# Logging configuration
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 async def main():
     """
@@ -36,11 +20,8 @@ async def main():
     - Closes all resources and logs completion.
     """
 
-    # Browser mode configuration from environment
-    headless = os.getenv('HEADLESS', 'true').lower() == 'true'
-
     conn = await init_db_connection()
-    playwright, browser, page = await init_browser(headless=headless)
+    playwright, browser, page = await init_browser(headless=ScrapingConfig.HEADLESS)
 
     await page.goto("https://justjoin.it/job-offers")
 
