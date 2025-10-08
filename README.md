@@ -368,5 +368,5 @@ cd aws/cleanup/scraper
 ./cleanup-aws.sh
 ```
 
-See `aws/deployment/scraper/README.md` and `aws/deployment/scraper/DEPLOY.md` for detailed deployment instructions.
+See `aws/deployment/scraper/README.md` for detailed deployment instructions.
 See `aws/cleanup/scraper/README.md` for cleanup instructions.

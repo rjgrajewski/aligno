@@ -1,114 +1,515 @@
-# Deployment - Aligno Scraper
+# Aligno Scraper - AWS Fargate Deployment
 
-Ten folder zawiera wszystkie pliki potrzebne do deployu scrapera Aligno na AWS Fargate.
+Complete deployment guide for running Aligno scraper as a **scheduled task on AWS Fargate** (daily at 2 AM UTC).
 
-## 📁 Struktura
+---
 
-```
-aws/deployment/scraper/
-├── Dockerfile                    # Obraz Docker dla scrapera
-├── .dockerignore                 # Pliki ignorowane przez Docker
-├── ecs-task-definition.json      # Definicja task ECS
-├── deploy.sh                     # Główny skrypt deployu
-├── quick-deploy.sh               # Szybki deploy (wszystkie kroki)
-├── setup-iam.sh                  # Konfiguracja ról IAM
-├── setup-infrastructure.sh       # Konfiguracja infrastruktury AWS
-├── test-local.sh                 # Test lokalny Docker
-├── management-commands.sh        # Komendy zarządzania serwisem
-├── DEPLOY.md                     # Szczegółowa dokumentacja deployu
-└── README.md                     # Ten plik
-```
+## 📋 Table of Contents
 
-## 🚀 Szybki Start
+- [Quick Start](#-quick-start)
+- [Prerequisites](#-prerequisites)
+- [File Structure](#-file-structure)
+- [First-Time Setup](#-first-time-setup)
+- [Updating Code](#-updating-code)
+- [Management Commands](#-management-commands)
+- [Configuration Details](#-configuration-details)
+- [Monitoring](#-monitoring)
+- [Troubleshooting](#-troubleshooting)
+- [Cost Estimation](#-cost-estimation)
+- [Security](#-security)
 
-Scraper uruchamia się jako **Scheduled Task** - raz dziennie o 2 AM UTC.
+---
 
-### 1. Pierwszy deploy (pełna konfiguracja):
-```bash
-cd aws/deployment/scraper
-./quick-deploy.sh
-```
+## 🚀 Quick Start
 
-### 2. Aktualizacja kodu:
+### Already have infrastructure set up?
+
+**Update code:**
 ```bash
 cd aws/deployment/scraper
 ./deploy.sh
 ```
 
-### 3. Test lokalny:
+**Test locally:**
 ```bash
-cd aws/deployment/scraper
 ./test-local.sh
 ```
 
-### 4. Uruchomienie manualne (poza harmonogramem):
+### First time deploying?
+
+**Full setup (infrastructure + app):**
 ```bash
-aws ecs run-task \
-  --cluster scraper-cluster \
-  --task-definition scraper \
-  --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[YOUR_SUBNET],securityGroups=[YOUR_SG],assignPublicIp=ENABLED}" \
-  --region eu-central-1
+cd aws/deployment/scraper
+./quick-deploy.sh
 ```
 
-## 📋 Wymagania
+This will:
+1. Create IAM roles
+2. Set up VPC, subnets, security groups
+3. Create ECR repository
+4. Build and push Docker image
+5. Create ECS cluster and scheduled task
 
-- AWS CLI skonfigurowany
-- Docker zainstalowany (z obsługą multi-platform builds)
-- Uprawnienia do tworzenia zasobów AWS
-- ARN sekretu bazy danych w AWS Secrets Manager
-- Plik `.env` w głównym katalogu projektu z wymaganymi zmiennymi:
-  - `AWS_ACCOUNT_ID` - ID konta AWS
-  - `AWS_REGION` - region AWS (np. eu-central-1)
-  - `SECRET_ARN` - ARN sekretu w Secrets Manager
+---
 
-### 💻 Kompatybilność platformy
+## 📋 Prerequisites
 
-Deployment automatycznie buduje obraz Docker dla **linux/amd64** (x86_64), niezależnie od architektury Twojego komputera:
-- ✅ **Apple Silicon (M1/M2/M3)**: Automatycznie cross-kompiluje do AMD64
-- ✅ **Intel Mac**: Natywny build AMD64
-- ✅ **Linux AMD64**: Natywny build
-- ✅ **Linux ARM64**: Automatycznie cross-kompiluje do AMD64
+Before deploying, ensure you have:
 
-AWS Fargate używa architektury **x86_64 (AMD64)**, więc wszystkie obrazy są budowane dla tej platformy.
+### Required Tools
+- ✅ **AWS CLI** configured with appropriate permissions
+- ✅ **Docker** installed with multi-platform build support
+- ✅ **AWS RDS PostgreSQL** instance running and accessible
 
-## 🔧 Zarządzanie
+### Required AWS Resources
+- ✅ **AWS Secrets Manager** secret containing database credentials:
+  ```json
+  {
+    "username": "your_db_username",
+    "password": "your_db_password"
+  }
+  ```
+  
+  Create with:
+  ```bash
+  aws secretsmanager create-secret \
+    --name aligno-db-credentials \
+    --secret-string '{"username":"your_user","password":"your_password"}' \
+    --region eu-central-1
+  ```
 
-Po deployu możesz używać komend zarządzających:
+### Required Configuration File
+
+Create `.env` file in the **project root** (`Aligno/.env`) with:
+
+```bash
+# AWS Account Configuration
+AWS_ACCOUNT_ID=123456789012
+AWS_REGION=eu-central-1
+
+# Secrets Manager
+SECRET_ARN=arn:aws:secretsmanager:eu-central-1:123456789012:secret:aligno-db-credentials-xxxxxx
+
+# Database Configuration (non-sensitive)
+AWS_DB_ENDPOINT=your-rds-endpoint.rds.amazonaws.com
+AWS_DB_NAME=aligno_db
+
+# Local Development Fallback (if Secrets Manager fails)
+AWS_DB_USERNAME=your_username
+AWS_DB_PASSWORD=your_password
+```
+
+**Note:** Copy from `.env.example` and fill in your values.
+
+### IAM Permissions
+
+Your AWS user/role needs permissions to create:
+- ECS clusters, services, tasks, task definitions
+- ECR repositories
+- IAM roles and policies
+- VPC, subnets, security groups, internet gateways
+- CloudWatch log groups
+- EventBridge rules
+- Access to Secrets Manager
+
+---
+
+## 📁 File Structure
+
+```
+aws/deployment/scraper/
+├── Dockerfile                    # Docker image for scraper
+├── .dockerignore                 # Files ignored by Docker build
+├── ecs-task-definition.json.template  # ECS task definition template
+├── deploy.sh                     # Main deployment script (update code)
+├── quick-deploy.sh               # Full setup (infrastructure + app)
+├── setup-iam.sh                  # IAM roles creation
+├── setup-infrastructure.sh       # VPC, subnets, security groups
+├── test-local.sh                 # Local Docker testing
+├── management-commands.sh        # Service management utilities
+└── README.md                     # This file
+```
+
+---
+
+## 🛠 First-Time Setup
+
+### Step 1: Prepare Configuration
+
+1. **Create Secrets Manager secret** (see [Prerequisites](#-prerequisites))
+2. **Create `.env` file** in project root with your AWS configuration
+3. **Ensure RDS database exists** and is accessible
+
+### Step 2: Run Full Deployment
 
 ```bash
 cd aws/deployment/scraper
-
-# Zobacz logi
-./management-commands.sh logs
-
-# Status harmonogramu
-./management-commands.sh schedule-status
-
-# Uruchom task teraz (poza harmonogramem)
-./management-commands.sh run-now
-
-# Wyłącz automatyczne uruchamianie
-./management-commands.sh disable-schedule
-
-# Włącz automatyczne uruchamianie
-./management-commands.sh enable-schedule
-
-# Zatrzymaj obecnie działający task
-./management-commands.sh stop-running
-
-# Zmień harmonogram (np. na 3 AM UTC)
-./management-commands.sh update-schedule 'cron(0 3 * * ? *)'
+chmod +x *.sh
+./quick-deploy.sh
 ```
 
-## 📚 Dokumentacja
+This script will:
+1. ✅ Create IAM execution and task roles
+2. ✅ Set up VPC and networking (or use existing default VPC)
+3. ✅ Create security group with required rules
+4. ✅ Create ECR repository
+5. ✅ Build Docker image for **linux/amd64** platform
+6. ✅ Push image to ECR
+7. ✅ Create ECS cluster `scraper-cluster`
+8. ✅ Register task definition
+9. ✅ Create EventBridge scheduled rule (cron: `0 2 * * ? *` = 2 AM UTC daily)
 
-- `DEPLOY.md` - Szczegółowa dokumentacja deployu
-- `../../../README.md` - Dokumentacja głównego projektu
-- `../../cleanup/scraper/README.md` - Dokumentacja czyszczenia zasobów AWS
+### Step 3: Verify Deployment
 
-## ⚠️ Uwagi
+```bash
+# Check scheduled rule status
+./management-commands.sh schedule-status
 
-- Wszystkie skrypty muszą być uruchamiane z folderu `aws/deployment/scraper/`
-- Docker build używa kontekstu z folderu głównego projektu (`../../..`)
-- Konfiguracja sieciowa jest wykrywana automatycznie
+# View recent logs
+./management-commands.sh logs
+
+# Run task manually (optional)
+./management-commands.sh run-now
+```
+
+---
+
+## 🔄 Updating Code
+
+After making code changes in `src/scraper/`, deploy the update:
+
+```bash
+cd aws/deployment/scraper
+./deploy.sh
+```
+
+This will:
+1. Build new Docker image
+2. Push to ECR
+3. Register new task definition revision
+4. Update EventBridge rule to use new revision
+
+**Note:** The next scheduled run (or manual run) will use the new code.
+
+---
+
+## 🎛 Management Commands
+
+Use `management-commands.sh` for common operations:
+
+### View Logs
+```bash
+./management-commands.sh logs
+```
+Shows recent CloudWatch logs from the scraper.
+
+### Check Schedule Status
+```bash
+./management-commands.sh schedule-status
+```
+Shows EventBridge rule state (ENABLED/DISABLED) and schedule.
+
+### Run Task Manually
+```bash
+./management-commands.sh run-now
+```
+Triggers scraper immediately (outside of schedule).
+
+### Stop Running Task
+```bash
+./management-commands.sh stop-running
+```
+Stops currently running scraper task.
+
+### Enable/Disable Schedule
+```bash
+./management-commands.sh enable-schedule
+./management-commands.sh disable-schedule
+```
+Enable or disable automatic daily runs.
+
+### Update Schedule
+```bash
+./management-commands.sh update-schedule 'cron(0 3 * * ? *)'
+```
+Change schedule (example: 3 AM UTC).
+
+---
+
+## ⚙️ Configuration Details
+
+### Deployment Architecture
+
+The scraper runs as a **Fargate Scheduled Task**:
+
+```
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│  EventBridge │─────▶│   Fargate    │─────▶│   RDS DB     │
+│  (2 AM UTC)  │      │   Scraper    │      │  (offers)    │
+└──────────────┘      └──────┬───────┘      └──────────────┘
+                             │
+                             ▼
+                      ┌──────────────┐
+                      │   Secrets    │
+                      │   Manager    │
+                      └──────────────┘
+```
+
+### Network Configuration
+
+Scripts automatically handle networking:
+
+- **VPC**: Uses default VPC or first available
+- **Subnet**: Public subnet with internet access (auto-detected)
+- **Security Group**: `scraper-sg` with rules for:
+  - ✅ HTTPS (443) outbound - for web scraping
+  - ✅ HTTP (80) outbound - for redirects
+  - ✅ PostgreSQL (5432) outbound - for RDS connection
+
+**Note:** Network configuration is NOT in `ecs-task-definition.json` - it's applied when creating the scheduled rule.
+
+### Environment Variables
+
+The scraper uses a **hybrid configuration approach**:
+
+#### In ECS Task Definition
+```json
+{
+  "AWS_REGION": "eu-central-1",
+  "SECRET_ARN": "arn:aws:secretsmanager:...",
+  "AWS_DB_ENDPOINT": "your-endpoint.rds.amazonaws.com",
+  "AWS_DB_NAME": "aligno_db"
+}
+```
+
+Values are auto-populated from `.env` during deployment.
+
+#### Security Model
+- 🔐 **Sensitive data (username, password)**: AWS Secrets Manager
+- 📝 **Non-sensitive data (endpoint, db name)**: Environment variables
+- 🔄 **Fallback**: `.env` file for local development
+
+This ensures:
+- ✅ Production credentials never in code/env vars
+- ✅ Easy local development with `.env`
+- ✅ Simple configuration for non-sensitive settings
+
+### Platform Compatibility
+
+Docker images are built for **linux/amd64** (AWS Fargate architecture):
+
+- ✅ **Apple Silicon (M1/M2/M3)**: Cross-compiles automatically
+- ✅ **Intel Mac**: Native build
+- ✅ **Linux AMD64**: Native build
+- ✅ **Linux ARM64**: Cross-compiles automatically
+
+Build command uses: `docker buildx build --platform linux/amd64`
+
+---
+
+## 📈 Monitoring
+
+### CloudWatch Logs
+
+Logs are sent to: `/ecs/scraper`
+
+**View in real-time:**
+```bash
+aws logs tail /ecs/scraper --follow --region eu-central-1
+```
+
+Or use management command:
+```bash
+./management-commands.sh logs
+```
+
+### ECS Console
+
+Monitor task execution in AWS Console:
+- **Cluster**: `scraper-cluster`
+- **Task Definition**: `scraper`
+- **Scheduled Rule**: `scraper-daily-schedule`
+
+Navigate to: ECS → Clusters → scraper-cluster → Scheduled Tasks
+
+---
+
+## 🐛 Troubleshooting
+
+### Task Not Running
+
+**Check schedule status:**
+```bash
+./management-commands.sh schedule-status
+```
+
+**Verify EventBridge rule:**
+```bash
+aws events list-rules --name-prefix scraper --region eu-central-1
+```
+
+**Check for failed tasks:**
+```bash
+aws ecs describe-tasks \
+  --cluster scraper-cluster \
+  --tasks $(aws ecs list-tasks --cluster scraper-cluster --query 'taskArns[0]' --output text) \
+  --region eu-central-1
+```
+
+### Container Fails to Start
+
+**Check logs:**
+```bash
+./management-commands.sh logs
+```
+
+**Common issues:**
+- ❌ Secrets Manager ARN incorrect → verify `SECRET_ARN` in `.env`
+- ❌ Database unreachable → check RDS security group allows connections
+- ❌ Missing environment variables → verify task definition
+
+### Database Connection Errors
+
+**Verify RDS accessibility:**
+```bash
+# From local machine (if security group allows)
+psql -h your-endpoint.rds.amazonaws.com -U your_user -d aligno_db
+```
+
+**Check security group rules:**
+- RDS security group must allow inbound PostgreSQL (5432) from scraper security group
+- Scraper security group must allow outbound PostgreSQL (5432)
+
+### Image Build Fails
+
+**Platform issues:**
+```bash
+# Verify Docker buildx is available
+docker buildx version
+
+# Create builder if needed
+docker buildx create --use
+```
+
+**Build manually to debug:**
+```bash
+cd ../../..  # Navigate to project root
+docker buildx build \
+  --platform linux/amd64 \
+  -f aws/deployment/scraper/Dockerfile \
+  -t aligno-scraper-test \
+  .
+```
+
+### Secrets Manager Access Denied
+
+**Verify IAM task role has permission:**
+```bash
+aws iam get-role-policy \
+  --role-name ecsTaskRole \
+  --policy-name SecretsManagerAccess \
+  --region eu-central-1
+```
+
+Should include:
+```json
+{
+  "Effect": "Allow",
+  "Action": "secretsmanager:GetSecretValue",
+  "Resource": "arn:aws:secretsmanager:*:*:secret:*"
+}
+```
+
+---
+
+## 💰 Cost Estimation
+
+### Scheduled Task Mode (Current Configuration)
+
+Running **once daily at 2 AM UTC** for ~15-30 minutes:
+
+| Service | Configuration | Monthly Cost |
+|---------|--------------|--------------|
+| **RDS** | db.t4g.micro, 20 GB storage | ~$14.80 |
+| **Fargate** | 1 vCPU, 2 GB RAM, ~30 runs × 30 min | ~$2.40 |
+| **ECR** | ~500 MB image storage | ~$0.05 |
+| **CloudWatch Logs** | ~1 GB/month | ~$0.50 |
+| **EventBridge** | Scheduled rules | $0.00 |
+| **Secrets Manager** | 1 secret | ~$0.40 |
+| **TOTAL** | | **~$18.15/month** |
+
+### Cost Savings vs 24/7 Service
+
+- 24/7 Service: ~$74/month (Fargate: ~$59, RDS: ~$15)
+- Scheduled Task: ~$18/month
+- **Savings: ~$56/month (76% reduction!)**
+
+### Cost Optimization Tips
+
+1. **Reduce task resources** if scraping is fast:
+   - Current: 1 vCPU, 2 GB RAM
+   - Minimum: 0.25 vCPU, 0.5 GB RAM (~$0.60/month for Fargate)
+
+2. **Use RDS snapshots** for development:
+   - Delete RDS instance when not needed
+   - Restore from snapshot when needed
+   - Snapshot storage: ~$0.095/GB/month
+
+3. **CloudWatch Logs retention**:
+   - Set retention to 7 days (default: indefinite)
+   - Reduces storage costs
+
+---
+
+## 🔒 Security
+
+### IAM Roles
+
+**Task Execution Role** (`ecsTaskExecutionRole`):
+- Pull images from ECR
+- Write logs to CloudWatch
+- **Principle**: Minimal permissions for ECS service
+
+**Task Role** (`ecsTaskRole`):
+- Access Secrets Manager for DB credentials
+- **Principle**: Only what the application needs
+
+### Network Security
+
+- ✅ No public IP exposure (task runs in VPC)
+- ✅ Security groups restrict traffic to HTTPS, HTTP, PostgreSQL
+- ✅ RDS in private subnet (recommended)
+
+### Secrets Management
+
+- ✅ Database credentials in AWS Secrets Manager
+- ✅ No secrets in environment variables
+- ✅ No secrets in Docker image
+- ✅ Secrets encrypted at rest (AWS managed keys)
+
+### Container Security
+
+- ✅ Non-root user in Dockerfile
+- ✅ Multi-stage build (smaller attack surface)
+- ✅ Only necessary dependencies installed
+
+---
+
+## 📚 Additional Resources
+
+- **Main Project README**: `../../../README.md`
+- **Cleanup Guide**: `../../cleanup/scraper/README.md`
+- **AWS Documentation**: `../../README.md`
+
+---
+
+## 🆘 Need Help?
+
+1. Check [Troubleshooting](#-troubleshooting) section
+2. Review CloudWatch logs: `./management-commands.sh logs`
+3. Verify configuration in `.env` file
+4. Check AWS Console for service status
+
+---
+
+**Last Updated**: Based on scraper version with Playwright 1.52.0, Python 3.9, asyncpg 0.29.0
