@@ -55,6 +55,77 @@ scout/
 └── aws_secrets.py      # AWS Secrets Manager integration
 ```
 
+## 🔍 How Scout Works
+
+### 1. Initialization Phase
+
+```python
+# Load environment variables
+load_dotenv()
+
+# Setup AWS credentials (if SECRET_ARN provided)
+setup_database_credentials_from_secrets(SECRET_ARN)
+
+# Initialize database connection
+conn = await init_db_connection()
+
+# Initialize Playwright browser
+playwright, browser, page = await init_browser(headless=True)
+```
+
+### 2. Link Collection Phase
+
+Scout navigates to JustJoin.it and collects job offer links:
+
+```python
+# Navigate to job board
+await page.goto("https://justjoin.it/job-offers")
+
+# Collect links by scrolling
+offer_urls = await collect_offer_links(page)
+```
+
+**Scrolling algorithm:**
+- Scrolls down the page progressively
+- Collects unique job offer links after each scroll (the page performs dynamic loading)
+- Stops when no new links found for `MAX_IDLE_SCROLLS` consecutive scrolls
+- Prevents duplicates using set-based tracking
+
+### 3. Data Extraction Phase
+
+For each new offer URL:
+
+```python
+# Navigate to offer page
+await page.goto(offer_url)
+
+# Extract structured data using selectors
+job_data = {
+    "job_title": extract(SELECTORS.JOB_TITLE),
+    "company": extract(SELECTORS.COMPANY),
+    "location": extract(SELECTORS.LOCATION),
+    # ... and more
+}
+
+# Save to database
+await conn.execute("INSERT INTO offers (...) VALUES (...)", job_data)
+```
+
+### 4. Cleanup Phase
+
+```python
+# Remove stale offers (no longer on website)
+await purge_stale_offers(conn, current_urls)
+
+# Remove empty records (failed extractions)
+await cleanup_empty_offers(conn)
+
+# Close connections
+await conn.close()
+await browser.close()
+await playwright.stop()
+```
+
 ## 🚀 Installation
 
 ### Prerequisites
@@ -189,77 +260,6 @@ Scout includes automatic data management features:
 - **Duplicate Prevention**: Checks for existing URLs before processing
 - **Stale Offer Removal**: Removes offers no longer on the website
 - **Empty Record Cleanup**: Removes failed extractions (records with only URL)
-
-## 🔍 How Scout Works
-
-### 1. Initialization Phase
-
-```python
-# Load environment variables
-load_dotenv()
-
-# Setup AWS credentials (if SECRET_ARN provided)
-setup_database_credentials_from_secrets(SECRET_ARN)
-
-# Initialize database connection
-conn = await init_db_connection()
-
-# Initialize Playwright browser
-playwright, browser, page = await init_browser(headless=True)
-```
-
-### 2. Link Collection Phase
-
-Scout navigates to JustJoin.it and collects job offer links:
-
-```python
-# Navigate to job board
-await page.goto("https://justjoin.it/job-offers")
-
-# Collect links by scrolling
-offer_urls = await collect_offer_links(page)
-```
-
-**Scrolling algorithm:**
-- Scrolls down the page progressively
-- Collects unique job offer links after each scroll (the page performs dynamic loading)
-- Stops when no new links found for `MAX_IDLE_SCROLLS` consecutive scrolls
-- Prevents duplicates using set-based tracking
-
-### 3. Data Extraction Phase
-
-For each new offer URL:
-
-```python
-# Navigate to offer page
-await page.goto(offer_url)
-
-# Extract structured data using selectors
-job_data = {
-    "job_title": extract(SELECTORS.JOB_TITLE),
-    "company": extract(SELECTORS.COMPANY),
-    "location": extract(SELECTORS.LOCATION),
-    # ... and more
-}
-
-# Save to database
-await conn.execute("INSERT INTO offers (...) VALUES (...)", job_data)
-```
-
-### 4. Cleanup Phase
-
-```python
-# Remove stale offers (no longer on website)
-await purge_stale_offers(conn, current_urls)
-
-# Remove empty records (failed extractions)
-await cleanup_empty_offers(conn)
-
-# Close connections
-await conn.close()
-await browser.close()
-await playwright.stop()
-```
 
 ## 🎛️ Selectors Configuration
 
