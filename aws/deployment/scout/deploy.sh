@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploy script for Aligno Scraper as ECS Scheduled Task (runs once per day)
+# Deploy script for Aligno Scout as ECS Scheduled Task (runs once per day)
 set -e
 
 # Load environment variables from .env file
@@ -147,7 +147,7 @@ if [ "$SECURITY_GROUP_ID" == "None" ] || [ -z "$SECURITY_GROUP_ID" ]; then
     echo "Creating security group..."
     SECURITY_GROUP_ID=$(aws ec2 create-security-group \
         --group-name scout-sg \
-        --description "Security group for Scraper" \
+        --description "Security group for Scout" \
         --vpc-id $VPC_ID \
         --region $AWS_REGION \
         --query 'GroupId' \
@@ -165,7 +165,7 @@ echo "Using security group: $SECURITY_GROUP_ID"
 
 # Create IAM role for EventBridge if it doesn't exist
 echo "🔐 Setting up EventBridge IAM role..."
-EVENTS_ROLE_NAME="scraper-eventbridge-role"
+EVENTS_ROLE_NAME="scout-eventbridge-role"
 EVENTS_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${EVENTS_ROLE_NAME}"
 
 aws iam get-role --role-name $EVENTS_ROLE_NAME --region $AWS_REGION 2>/dev/null || {
@@ -228,7 +228,7 @@ aws events put-rule \
     --name $SCHEDULE_RULE_NAME \
     --schedule-expression "$SCHEDULE_EXPRESSION" \
     --state ENABLED \
-    --description "Daily scraper execution at 2 AM UTC" \
+    --description "Daily Scout execution at 2 AM UTC" \
     --region $AWS_REGION
 
 echo "✅ EventBridge rule created/updated"

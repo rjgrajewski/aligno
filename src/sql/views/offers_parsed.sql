@@ -16,7 +16,7 @@ WITH
             , salary_mandate
             , salary_permanent
             , salary_specific_task
-            , work_type
+            , work_schedule
             , experience
             , employment_type
             , operating_mode

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS offers (
     salary_mandate TEXT,
     salary_permanent TEXT,
     salary_specific_task TEXT,
-    work_type TEXT,
+    work_schedule TEXT,
     experience TEXT,
     employment_type TEXT,
     operating_mode TEXT,

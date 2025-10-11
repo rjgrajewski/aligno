@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Management commands for Aligno Scraper Scheduled Task
+# Management commands for Aligno Scout Scheduled Task
 # Usage: ./management-commands.sh [command]
 
 # Load environment variables
@@ -90,8 +90,8 @@ case "$1" in
         echo "✅ Schedule updated"
         ;;
     *)
-        echo "🔧 Aligno Scraper Management Commands (Scheduled Task)"
-        echo "======================================================"
+        echo "🔧 Aligno Scout Management Commands (Scheduled Task)"
+        echo "===================================================="
         echo ""
         echo "Usage: ./management-commands.sh [command]"
         echo ""

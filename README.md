@@ -147,6 +147,7 @@ MAX_OFFERS=
    - `tables/offers.sql`: Job offers table
    - `views/offers_parsed.sql`: Parsed offers view
 
+
 ## 📝 Future Improvements
 
 **Market overview:**

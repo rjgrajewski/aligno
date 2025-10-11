@@ -2,8 +2,9 @@
 
 import asyncpg, logging, os
 from pathlib import Path
+from urllib.parse import quote_plus
 
-def get_database_dsn():
+def get_database_dsn() -> str:
     """Get database DSN from environment variables for AWS RDS or DATABASE_URL."""
     database_url = os.getenv('DATABASE_URL')
     if database_url:
@@ -18,8 +19,12 @@ def get_database_dsn():
     if not all([aws_endpoint, aws_username, aws_password, aws_db_name]):
         raise ValueError("Missing AWS RDS configuration. Please set AWS_DB_ENDPOINT, AWS_DB_USERNAME, AWS_DB_PASSWORD, and AWS_DB_NAME environment variables.")
     
+    # URL-encode username and password to handle special characters
+    username_encoded = quote_plus(aws_username)
+    password_encoded = quote_plus(aws_password)
+    
     logging.info(f"Connecting to AWS RDS: {aws_endpoint}")
-    return f"postgresql://{aws_username}:{aws_password}@{aws_endpoint}:5432/{aws_db_name}"
+    return f"postgresql://{username_encoded}:{password_encoded}@{aws_endpoint}:5432/{aws_db_name}"
 
 
 async def init_db_connection() -> asyncpg.Connection:
@@ -142,7 +147,7 @@ async def cleanup_empty_offers(conn: asyncpg.Connection):
         AND salary_mandate IS NULL 
         AND salary_permanent IS NULL 
         AND salary_specific_task IS NULL 
-        AND work_type IS NULL 
+        AND work_schedule IS NULL 
         AND experience IS NULL 
         AND employment_type IS NULL 
         AND operating_mode IS NULL 

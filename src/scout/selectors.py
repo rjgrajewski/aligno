@@ -53,9 +53,9 @@ class JustJoinItSelectors:
         description="Operating mode information"
     )
     
-    WORK_TYPE = SelectorConfig(
+    WORK_SCHEDULE = SelectorConfig(
         primary='xpath=/html/body/div[2]/div/div[1]/div[4]/div/div[3]/div[1]/div[1]/div[3]/div[1]/div[2]',
-        description="Work type information"
+        description="Work schedule (full-time, part-time)"
     )
     
     EXPERIENCE = SelectorConfig(

@@ -7,7 +7,7 @@ AWS_REGION="eu-central-1"
 VPC_CIDR="10.0.0.0/16"
 SUBNET_CIDR="10.0.1.0/24"
 
-echo "🏗️ Setting up AWS infrastructure for Aligno Scraper..."
+echo "🏗️ Setting up AWS infrastructure for Aligno Scout..."
 
 # Create VPC
 echo "🌐 Creating VPC..."
@@ -85,7 +85,7 @@ aws ec2 create-route \
 echo "🔒 Creating security group..."
 SECURITY_GROUP_ID=$(aws ec2 create-security-group \
     --group-name scout-sg \
-    --description "Security group for Scraper" \
+    --description "Security group for Scout" \
     --vpc-id $VPC_ID \
     --region $AWS_REGION \
     --query 'GroupId' \

@@ -193,14 +193,14 @@ async def process_offers(page: Page, conn, offer_urls: list[str], browser=None, 
                 logging.error(f"❌ Error in category extraction: {e}")
                 pass
             
-            # Work type - use the specific XPath selector
-            work_type = None
+            # Work schedule - use the specific XPath selector
+            work_schedule = None
             try:
-                work_type_element = page.locator(get_selector(SELECTORS.WORK_TYPE)).first
-                if await work_type_element.count() > 0:
-                    work_type = await work_type_element.inner_text()
+                work_schedule_element = page.locator(get_selector(SELECTORS.WORK_SCHEDULE)).first
+                if await work_schedule_element.count() > 0:
+                    work_schedule = await work_schedule_element.inner_text()
             except Exception as e:
-                logging.error(f"❌ Error in work type extraction: {e}")
+                logging.error(f"❌ Error in work schedule extraction: {e}")
                 pass
             
             # Employment type - use the specific XPath selector
@@ -338,7 +338,7 @@ async def process_offers(page: Page, conn, offer_urls: list[str], browser=None, 
                 "salary_mandate": sanitize_string(salary_mandate),
                 "salary_permanent": sanitize_string(salary_permanent),
                 "salary_specific_task": sanitize_string(salary_specific_task),
-                "work_type": sanitize_string(work_type),
+                "work_schedule": sanitize_string(work_schedule),
                 "experience": sanitize_string(experience),
                 "employment_type": sanitize_string(employment_type),
                 "operating_mode": sanitize_string(operating_mode),
@@ -349,13 +349,13 @@ async def process_offers(page: Page, conn, offer_urls: list[str], browser=None, 
             try:
                 await conn.execute(
                     """
-                    INSERT INTO offers (job_url, job_title, category, company, location, salary_any, salary_b2b, salary_internship, salary_mandate, salary_permanent, salary_specific_task, work_type, experience, employment_type, operating_mode, tech_stack, created_at)
+                    INSERT INTO offers (job_url, job_title, category, company, location, salary_any, salary_b2b, salary_internship, salary_mandate, salary_permanent, salary_specific_task, work_schedule, experience, employment_type, operating_mode, tech_stack, created_at)
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CURRENT_TIMESTAMP)
                     """,
                     offer_data["job_url"], offer_data["job_title"], offer_data["category"], 
                     offer_data["company"], offer_data["location"], offer_data["salary_any"], 
                     offer_data["salary_b2b"], offer_data["salary_internship"], offer_data["salary_mandate"], 
-                    offer_data["salary_permanent"], offer_data["salary_specific_task"], offer_data["work_type"], 
+                    offer_data["salary_permanent"], offer_data["salary_specific_task"], offer_data["work_schedule"], 
                     offer_data["experience"], offer_data["employment_type"], offer_data["operating_mode"], 
                     offer_data["tech_stack"]
                 )

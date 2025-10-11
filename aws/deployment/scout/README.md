@@ -1,6 +1,6 @@
 # Aligno Scout - AWS Fargate Deployment
 
-Complete deployment guide for running Aligno Scout (job scraper module) as a **scheduled task on AWS Fargate** (daily at 2 AM UTC).
+Complete deployment guide for running Aligno Scout (job offers module) as a **scheduled task on AWS Fargate** (daily at 2 AM UTC).
 
 ---
 
@@ -118,7 +118,7 @@ Your AWS user/role needs permissions to create:
 
 ```
 aws/deployment/scout/
-├── Dockerfile                    # Docker image for scraper
+├── Dockerfile                    # Docker image for Scout
 ├── .dockerignore                 # Files ignored by Docker build
 ├── ecs-task-definition.json.template  # ECS task definition template
 ├── deploy.sh                     # Main deployment script (update code)
