@@ -108,16 +108,18 @@ await playwright.stop()
 
 ## 🚀 Installation
   
+### AWS
+
 If you want to deploy Scout on AWS, you don’t need to set it up locally – simply use the deployment script (`quick-deploy.sh`) as described in the AWS deployment guide.  
 The steps below are only needed if you wish to run Scout locally for development or testing.
 
-## Prerequisites
+### Prerequisites
 
 - Python 3.9+
 - PostgreSQL 15.3+ (or AWS RDS)
 - pip and virtualenv
 
-### Setup
+### Local Setup
 
 1. **Install dependencies:**
 
