@@ -63,38 +63,11 @@ Scout navigates to JustJoin.it and collects job offer links:
 
 ### 2. Data Extraction Phase
 
-For each new offer URL:
-
-```python
-# Navigate to offer page
-await page.goto(offer_url)
-
-# Extract structured data using selectors
-job_data = {
-    "job_title": extract(SELECTORS.JOB_TITLE),
-    "company": extract(SELECTORS.COMPANY),
-    "location": extract(SELECTORS.LOCATION),
-    # ... and more
-}
-
-# Save to database
-await conn.execute("INSERT INTO offers (...) VALUES (...)", job_data)
-```
+For each new offer URL, Scout navigates to the individual offer page and extracts structured data fields (such as job title, company, and location) by applying dedicated selectors for each data point. The extracted information is then saved into the database as a new entry in the `offers` table.
 
 ### 3. Cleanup Phase
 
-```python
-# Remove stale offers (no longer on website)
-await purge_stale_offers(conn, current_urls)
-
-# Remove empty records (failed extractions)
-await cleanup_empty_offers(conn)
-
-# Close connections
-await conn.close()
-await browser.close()
-await playwright.stop()
-```
+After data extraction, Scout performs cleanup actions to maintain data quality. It detects and removes stale offers that are no longer listed on the website, cleans up any empty records resulting from failed extractions, and then gracefully closes all active connections and resources, including the database connection and browser instance.
 
 ## 🚀 Installation
 
