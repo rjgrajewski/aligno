@@ -220,16 +220,6 @@ Scout provides detailed logging:
 2025-10-11 12:15:31 [INFO] 🎉 Scraping completed successfully!
 ```
 
-### CloudWatch Logs (AWS)
-
-```bash
-# View recent logs
-./management-commands.sh logs
-
-# Stream logs in real-time
-aws logs tail /aws/ecs/scout-scraper --follow
-```
-
 ## 🗄️ Database Schema
 
 Scout automatically creates and manages the `offers` table:
