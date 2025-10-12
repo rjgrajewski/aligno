@@ -54,6 +54,15 @@ Scout uses **async/await syntax** required by Playwright for browser automation.
 - **Memory control** - predictable resource usage
 - **Error tracking** - easier debugging of sequential flow
 
+### AWS Fargate
+
+- **ECS Cluster** with Fargate task (serverless container execution)
+- **EventBridge** rule for scheduling (daily at 2 AM UTC)
+- **CloudWatch Logs** for monitoring and debugging
+- **Secrets Manager** for secure credential storage
+- **RDS PostgreSQL** for data storage
+- **IAM Roles** for service authentication
+
 ## 📦 Dependencies
 
 Scout uses the following key dependencies:
@@ -132,16 +141,6 @@ SECRET_ARN=arn:aws:secretsmanager:region:account:secret:name
 ## 📖 Usage
 
 ### AWS Fargate (Production)
-
-Scout is designed to run as a scheduled ECS task on AWS Fargate.
-
-**Architecture:**
-- **ECS Cluster** with Fargate task (serverless container execution)
-- **EventBridge** rule for scheduling (daily at 2 AM UTC)
-- **CloudWatch Logs** for monitoring and debugging
-- **Secrets Manager** for secure credential storage
-- **RDS PostgreSQL** for data storage
-- **IAM Roles** for service authentication
 
 **Quick Deployment:**
 ```bash
