@@ -221,6 +221,43 @@ python -m scout
 python src/scout/__main__.py
 ```
 
+## 📊 Performance Considerations
+
+### Typical execution statistics
+
+**Typical execution statistics:**
+- **Offers collected:** ~7.000 per run
+- **Execution time:** ~1 hour
+- **Database operations:** ~300 inserts (new offers), ~100 deletes (stale offers)
+
+## 📈 Monitoring
+
+### Logs
+
+Scout provides detailed logging:
+
+```
+2025-10-11 12:00:00 [INFO] ✅ Database connection established successfully
+2025-10-11 12:00:01 [INFO] 🔄 Starting to collect job offer links...
+2025-10-11 12:00:15 [INFO] 📊 Collected 1250 unique job offer links
+2025-10-11 12:00:16 [INFO] 🛑 Stopping - no new links found
+2025-10-11 12:00:16 [INFO] ⏭️ Already in database: 1100 offers
+2025-10-11 12:00:16 [INFO] 🆕 New offers to process: 150 offers
+2025-10-11 12:15:30 [INFO] ✅ Processed 150 new offers
+2025-10-11 12:15:31 [INFO] 🗑️ Purged 45 stale offers
+2025-10-11 12:15:31 [INFO] 🎉 Scraping completed successfully!
+```
+
+### CloudWatch Logs (AWS)
+
+```bash
+# View recent logs
+./management-commands.sh logs
+
+# Stream logs in real-time
+aws logs tail /aws/ecs/scout-scraper --follow
+```
+
 ## 🗄️ Database Schema
 
 Scout automatically creates and manages the `offers` table:
@@ -281,43 +318,6 @@ if i > 1 and (i - 1) % ScrapingConfig.RESTART_BROWSER_EVERY == 0:
     await browser.close()
     browser = await playwright.chromium.launch(headless=True)
     page = await browser.new_page()
-```
-
-## 📊 Performance Considerations
-
-### Typical execution statistics
-
-**Typical execution statistics:**
-- **Offers collected:** ~7.000 per run
-- **Execution time:** ~1 hour
-- **Database operations:** ~300 inserts (new offers), ~100 deletes (stale offers)
-
-## 📈 Monitoring
-
-### Logs
-
-Scout provides detailed logging:
-
-```
-2025-10-11 12:00:00 [INFO] ✅ Database connection established successfully
-2025-10-11 12:00:01 [INFO] 🔄 Starting to collect job offer links...
-2025-10-11 12:00:15 [INFO] 📊 Collected 1250 unique job offer links
-2025-10-11 12:00:16 [INFO] 🛑 Stopping - no new links found
-2025-10-11 12:00:16 [INFO] ⏭️ Already in database: 1100 offers
-2025-10-11 12:00:16 [INFO] 🆕 New offers to process: 150 offers
-2025-10-11 12:15:30 [INFO] ✅ Processed 150 new offers
-2025-10-11 12:15:31 [INFO] 🗑️ Purged 45 stale offers
-2025-10-11 12:15:31 [INFO] 🎉 Scraping completed successfully!
-```
-
-### CloudWatch Logs (AWS)
-
-```bash
-# View recent logs
-./management-commands.sh logs
-
-# Stream logs in real-time
-aws logs tail /aws/ecs/scout-scraper --follow
 ```
 
 ## 📝 Future Improvements
