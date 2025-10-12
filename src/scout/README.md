@@ -25,7 +25,7 @@ scout/
 └── aws_secrets.py      # AWS Secrets Manager integration
 ```
 
-### ⚡ Async Architecture
+### Async Architecture
 
 Scout uses **async/await syntax** required by Playwright for browser automation. Database operations use `asyncpg` for **non-blocking I/O**.
 
@@ -51,33 +51,9 @@ For the complete list, see `requirements.txt` in the project root.
 
 ## 🔍 How Scout Works
 
-### 1. Initialization Phase
-
-```python
-# Load environment variables
-load_dotenv()
-
-# Setup AWS credentials (if SECRET_ARN provided)
-setup_database_credentials_from_secrets(SECRET_ARN)
-
-# Initialize database connection
-conn = await init_db_connection()
-
-# Initialize Playwright browser
-playwright, browser, page = await init_browser(headless=True)
-```
-
-### 2. Link Collection Phase
+### 1. Link Collection Phase
 
 Scout navigates to JustJoin.it and collects job offer links:
-
-```python
-# Navigate to job board
-await page.goto("https://justjoin.it/job-offers")
-
-# Collect links by scrolling
-offer_urls = await collect_offer_links(page)
-```
 
 **Scrolling algorithm:**
 - Scrolls down the page progressively
@@ -85,7 +61,7 @@ offer_urls = await collect_offer_links(page)
 - Stops when no new links found for `MAX_IDLE_SCROLLS` consecutive scrolls
 - Prevents duplicates using set-based tracking
 
-### 3. Data Extraction Phase
+### 2. Data Extraction Phase
 
 For each new offer URL:
 
@@ -105,7 +81,7 @@ job_data = {
 await conn.execute("INSERT INTO offers (...) VALUES (...)", job_data)
 ```
 
-### 4. Cleanup Phase
+### 3. Cleanup Phase
 
 ```python
 # Remove stale offers (no longer on website)
@@ -130,8 +106,8 @@ await playwright.stop()
 
 ### Local Setup
 
-**Note:**
->> For AWS deployment, skip local setup and use `quick-deploy.sh` (see Deployment section below).
+> **Note:**
+> For AWS deployment, skip local setup and use `quick-deploy.sh` (see Deployment section below).
 
 1. **Install dependencies:**
 
@@ -184,172 +160,6 @@ class ScrapingConfig:
 
 ## 📖 Usage
 
-### Local Execution
-
-**As a Python module (recommended):**
-
-```bash
-python -m scout
-```
-
-**From project root:**
-
-```bash
-cd src
-python -m scout
-```
-
-**Direct execution:**
-
-```bash
-python src/scout/__main__.py
-```
-
-### AWS Management
-
-For AWS deployment and management commands, see the Deployment section below.
-
-## 🗄️ Database Schema
-
-Scout automatically creates and manages the `offers` table:
-
-```sql
-CREATE TABLE IF NOT EXISTS offers (
-    job_url TEXT PRIMARY KEY,
-    job_title TEXT,
-    category TEXT,
-    company TEXT,
-    location TEXT,
-    salary_any TEXT,
-    salary_b2b TEXT,
-    salary_internship TEXT,
-    salary_mandate TEXT,
-    salary_permanent TEXT,
-    salary_specific_task TEXT,
-    work_schedule TEXT,
-    experience TEXT,
-    employment_type TEXT,
-    operating_mode TEXT,
-    tech_stack TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Data Management
-
-Scout includes automatic data management features:
-
-- **Duplicate Prevention**: Checks for existing URLs before processing
-- **Stale Offer Removal**: Removes offers no longer on the website
-- **Empty Record Cleanup**: Removes failed extractions (records with only URL)
-
-## 🎛️ Selectors Configuration
-
-Scout uses centralized selector management through `selectors.py`:
-
-```python
-class JustJoinItSelectors:
-    JOB_OFFER_LINKS = SelectorConfig(
-        primary='a[href*="/job-offer/"]',
-        description="Links to individual job offers"
-    )
-    
-    JOB_TITLE = SelectorConfig(
-        primary='h1',
-        description="Main job title heading"
-    )
-    
-    COMPANY = SelectorConfig(
-        primary='a:has(svg[data-testid="ApartmentRoundedIcon"]) p',
-        description="Company name from link with apartment icon"
-    )
-    
-    # ... more selectors
-```
-
-**Selector types:**
-- CSS selectors for simple elements
-- XPath expressions for complex DOM navigation
-- Text-based selectors for dynamic content
-
-## 🔐 Security Features
-
-### AWS Secrets Manager Integration
-
-```python
-# Automatically loads credentials from AWS Secrets Manager
-SECRET_ARN = os.getenv('SECRET_ARN')
-if SECRET_ARN:
-    setup_database_credentials_from_secrets(SECRET_ARN)
-```
-
-### Data Sanitization
-
-```python
-def sanitize_string(value, max_length=None):
-    """Simple string sanitization without validation."""
-    if not value or not isinstance(value, str):
-        return None
-    cleaned = value.strip()
-    if max_length and len(cleaned) > max_length:
-        cleaned = cleaned[:max_length]
-    return cleaned if cleaned else None
-```
-
-### Connection Management
-
-- Automatic connection validation before processing
-- Reconnection handling for long-running jobs
-- Proper resource cleanup in finally blocks
-
-## 🐛 Debugging & Development
-
-### Enable Visual Browser
-
-```python
-# In config.py
-HEADLESS = False
-```
-
-### Verbose Logging
-
-Scout uses Python's logging module with INFO level by default:
-
-```python
-# In cli.py
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
-```
-
-See the Monitoring section below for example log output.
-
-## 📊 Performance Considerations
-
-### Performance Metrics
-
-**Typical execution statistics:**
-- **Offers collected:** ~7.000 per run
-- **Execution time:** ~1 hour
-- **Database operations:** ~300 inserts (new offers), ~100 deletes (stale offers)
-
-### Memory Management
-
-Scout implements automatic browser restarts to prevent memory leaks:
-
-```python
-# Restart browser every 500 offers (configurable)
-if i > 1 and (i - 1) % ScrapingConfig.RESTART_BROWSER_EVERY == 0:
-    await browser.close()
-    browser = await playwright.chromium.launch(headless=True)
-    page = await browser.new_page()
-```
-
-## 🔧 Troubleshooting
-
-## 🚀 Deployment
-
 ### AWS Fargate (Production)
 
 Scout is designed to run as a scheduled ECS task on AWS Fargate.
@@ -398,6 +208,112 @@ The deployment requires the following IAM permissions:
 
 For detailed deployment instructions, see [AWS Deployment Guide](../../aws/deployment/scout/README.md).
 
+### Local Execution
+
+**As a Python module (recommended):**
+
+```bash
+python -m scout
+```
+
+**From project root:**
+
+```bash
+cd src
+python -m scout
+```
+
+**Direct execution:**
+
+```bash
+python src/scout/__main__.py
+```
+
+## 🗄️ Database Schema
+
+Scout automatically creates and manages the `offers` table:
+
+```sql
+CREATE TABLE IF NOT EXISTS offers (
+    job_url TEXT PRIMARY KEY,
+    job_title TEXT,
+    category TEXT,
+    company TEXT,
+    location TEXT,
+    salary_any TEXT,
+    salary_b2b TEXT,
+    salary_internship TEXT,
+    salary_mandate TEXT,
+    salary_permanent TEXT,
+    salary_specific_task TEXT,
+    work_schedule TEXT,
+    experience TEXT,
+    employment_type TEXT,
+    operating_mode TEXT,
+    tech_stack TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Data Management
+
+Scout includes automatic data management features:
+
+- **Duplicate Prevention**: Checks for existing URLs before processing
+- **Stale Offer Removal**: Removes offers no longer on the website
+- **Empty Record Cleanup**: Removes failed extractions (records with only URL)
+
+## 🔐 Security Features
+
+### AWS Secrets Manager Integration
+
+```python
+# Automatically loads credentials from AWS Secrets Manager
+SECRET_ARN = os.getenv('SECRET_ARN')
+if SECRET_ARN:
+    setup_database_credentials_from_secrets(SECRET_ARN)
+```
+
+### Data Sanitization
+
+```python
+def sanitize_string(value, max_length=None):
+    """Simple string sanitization without validation."""
+    if not value or not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if max_length and len(cleaned) > max_length:
+        cleaned = cleaned[:max_length]
+    return cleaned if cleaned else None
+```
+
+### Connection Management
+
+- Automatic connection validation before processing
+- Reconnection handling for long-running jobs
+- Proper resource cleanup in finally blocks
+
+### Memory Management
+
+Scout implements automatic browser restarts to prevent memory leaks:
+
+```python
+# Restart browser every 500 offers (configurable)
+if i > 1 and (i - 1) % ScrapingConfig.RESTART_BROWSER_EVERY == 0:
+    await browser.close()
+    browser = await playwright.chromium.launch(headless=True)
+    page = await browser.new_page()
+```
+
+## 📊 Performance Considerations
+
+### Typical execution statistics
+
+**Typical execution statistics:**
+- **Offers collected:** ~7.000 per run
+- **Execution time:** ~1 hour
+- **Database operations:** ~300 inserts (new offers), ~100 deletes (stale offers)
+
 ## 📈 Monitoring
 
 ### Logs
@@ -428,28 +344,34 @@ aws logs tail /aws/ecs/scout-scraper --follow
 
 ## 🤝 Contributing
 
-### Adding New Selectors
+### Selectors Configuration
 
-1. Add selector to `selectors.py`:
+Scout uses centralized selector management through `selectors.py`:
+
 ```python
-NEW_FIELD = SelectorConfig(
-    primary='css-selector-here',
-    description="Description of what this selects"
-)
+class JustJoinItSelectors:
+    JOB_OFFER_LINKS = SelectorConfig(
+        primary='a[href*="/job-offer/"]',
+        description="Links to individual job offers"
+    )
+    
+    JOB_TITLE = SelectorConfig(
+        primary='h1',
+        description="Main job title heading"
+    )
+    
+    COMPANY = SelectorConfig(
+        primary='a:has(svg[data-testid="ApartmentRoundedIcon"]) p',
+        description="Company name from link with apartment icon"
+    )
+    
+    # ... more selectors
 ```
 
-2. Extract in `scrape_core.py`:
-```python
-new_field = None
-try:
-    element = page.locator(get_selector(SELECTORS.NEW_FIELD)).first
-    if await element.count() > 0:
-        new_field = await element.inner_text()
-except Exception as e:
-    logging.error(f"❌ Error in new_field extraction: {e}")
-```
-
-3. Add to database schema and offer_data dict
+**Selector types:**
+- CSS selectors for simple elements
+- XPath expressions for complex DOM navigation
+- Text-based selectors for dynamic content
 
 ### Code Style
 
@@ -475,4 +397,3 @@ except Exception as e:
 ---
 
 **Proudly built and maintained by Rafal Grajewski for the Aligno project**
-
