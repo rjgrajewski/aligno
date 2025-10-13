@@ -472,7 +472,7 @@ Should include:
 
 ## 📚 Additional Resources
 
-- [Aligno README](../../../../README.md)
+- [Aligno README](../../../README.md)
 
 ---
 
