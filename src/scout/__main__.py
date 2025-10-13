@@ -5,9 +5,7 @@ Enables running the Scout package as a script:
     or
     python scout/__main__.py
 """
-import os
-import sys
-import asyncio
+import asyncio, os, sys
 
 # If executed directly, ensure root of src is on sys.path
 if __package__ is None:

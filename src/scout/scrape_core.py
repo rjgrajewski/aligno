@@ -50,7 +50,7 @@ async def collect_offer_links(page: Page) -> list[str]:
             current_links = await page.locator(get_selector(SELECTORS.JOB_OFFER_LINKS)).all()
             current_urls = set()
             
-            for i, link in enumerate(current_links):
+            for link in current_links:
                 try:
                     href = await link.get_attribute('href', timeout=ScrapingConfig.LINK_TIMEOUT)
                     if href and '/job-offer/' in href:
