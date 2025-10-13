@@ -42,7 +42,7 @@ Before deploying, ensure you have:
 ### Required AWS Resources
 - ✅ **AWS RDS** PosrgreSQL instance
 - ✅ **AWS Secrets Manager** secret containing database credentials:
-  **Recommended:** create automatically when creating the RDS instance
+  > **Recommended:** create automatically when creating the RDS instance
     ```json
     {
       "username": "your_db_username",
