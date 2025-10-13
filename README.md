@@ -19,6 +19,7 @@ Aligno is a web application for collecting, processing and analyzing job offers 
    - Playwright-based scraper that automatically collects job-offer links and detailed information from JustJoin.it.
    - Supports automated task scheduling and execution in AWS Fargate, enabling continuous collection of new offers, and removal of expired or stale offers without manual intervention.
    - Handles three phases: efficient link collection, detailed data extraction, and cleanup.
+   - [See full Scout documentation](./src/scout/README.md)
 
 3. 🛠️ **Atlas** *(In Progress)*
    - Backend service powered by AI to automatically analyze and categorize skills, technologies, and other details within job offers.
