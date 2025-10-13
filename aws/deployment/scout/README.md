@@ -4,6 +4,15 @@ Complete deployment guide for running Aligno Scout (job offers module) as a **sc
 
 ---
 
+## 📚 Table of Contents
+
+- [Architecture](#-architecture)
+- [Prerequisites](#-prerequisites)
+  - [Required Tools](#required-tools)
+  - [Required AWS Resources]()
+
+---
+
 ## 📁 Architecture
 
 ```
@@ -29,59 +38,44 @@ Before deploying, ensure you have:
 ### Required Tools
 - ✅ **AWS CLI** configured with appropriate permissions
 - ✅ **Docker** installed with multi-platform build support
-- ✅ **AWS RDS PostgreSQL** instance running and accessible
 
 ### Required AWS Resources
+- ✅ **AWS RDS** PosrgreSQL instance
 - ✅ **AWS Secrets Manager** secret containing database credentials:
-  ```json
-  {
-    "username": "your_db_username",
-    "password": "your_db_password"
-  }
-  ```
-  
-  Create with:
-  ```bash
-  aws secretsmanager create-secret \
-    --name aligno-db-credentials \
-    --secret-string '{"username":"your_user","password":"your_password"}' \
-    --region eu-central-1
-  ```
+  **Recommended:** create automatically when creating the RDS instance
+    ```json
+    {
+      "username": "your_db_username",
+      "password": "your_db_password"
+    }
+    ```
 
 ### Required Configuration File
 
 Create `.env` file in the **project root** (`Aligno/.env`) with:
+  **Note:** Copy from `.env.example` and fill in your values.
+    ```bash
+    # AWS Account Configuration
+    AWS_ACCOUNT_ID=123456789012
+    AWS_REGION=eu-central-1
 
-```bash
-# AWS Account Configuration
-AWS_ACCOUNT_ID=123456789012
-AWS_REGION=eu-central-1
+    # Secrets Manager
+    SECRET_ARN=arn:aws:secretsmanager:eu-central-1:123456789012:secret:aligno-db-credentials-xxxxxx
 
-# Secrets Manager
-SECRET_ARN=arn:aws:secretsmanager:eu-central-1:123456789012:secret:aligno-db-credentials-xxxxxx
+    # Database Configuration (non-sensitive)
+    AWS_DB_ENDPOINT=your-rds-endpoint.rds.amazonaws.com
+    AWS_DB_NAME=aligno_db
 
-# Database Configuration (non-sensitive)
-AWS_DB_ENDPOINT=your-rds-endpoint.rds.amazonaws.com
-AWS_DB_NAME=aligno_db
-
-# Local Development Fallback (if Secrets Manager fails)
-AWS_DB_USERNAME=your_username
-AWS_DB_PASSWORD=your_password
-```
-
-**Note:** Copy from `.env.example` and fill in your values.
+    # Local Development Fallback (if Secrets Manager fails)
+    AWS_DB_USERNAME=your_username
+    AWS_DB_PASSWORD=your_password
+    ```
 
 ---
 
 ## 🛠 First-Time Setup
 
-### Step 1: Prepare Configuration
-
-1. **Create Secrets Manager secret** (see [Prerequisites](#-prerequisites))
-2. **Create `.env` file** in project root with your AWS configuration
-3. **Ensure RDS database exists** and is accessible
-
-### Step 2: Run Full Deployment
+### Step 1: Run Full Deployment
 
 ```bash
 cd aws/deployment/scout
@@ -100,7 +94,7 @@ This script will:
 8. ✅ Register task definition
 9. ✅ Create EventBridge scheduled rule (cron: `0 2 * * ? *` = 2 AM UTC daily)
 
-### Step 3: Verify Deployment
+### Step 2: Verify Deployment
 
 ```bash
 # Check scheduled rule status
@@ -191,7 +185,7 @@ Change schedule (example: 3 AM UTC).
 
 ---
 
-## 📚 Additional Resources
+## 🔗 Related Documentation
 
 - [Aligno README](../../../README.md)
 - [Scout README](../scout/README.md)
