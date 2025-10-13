@@ -2,16 +2,30 @@
 
 Complete deployment guide for running Aligno Scout (job offers module) as a **scheduled task on AWS Fargate** (daily at 2 AM UTC).
 
----
 
 ## 📚 Table of Contents
 
+- [Cost Estimation](#-cost-estimation)
 - [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
   - [Required Tools](#required-tools)
-  - [Required AWS Resources]()
+  - [Required AWS Resources](#required-aws-resources)
+- [First-Time Setup](#-first-time-setup)
+- [Updating Code](#-updating-code)
+- [Management Commands](#-management-commands)
+- [Related Documentation](#-related-documentation)
 
----
+## 💰 Cost Estimation
+
+| Service | Configuration | Monthly Cost |
+|---------|--------------|--------------|
+| **RDS** | db.t4g.micro, 20 GB storage | ~$14.80 |
+| **Fargate** | 1 vCPU, 2 GB RAM, ~30 runs × 30 min | ~$2.40 |
+| **ECR** | ~500 MB image storage | ~$0.05 |
+| **CloudWatch Logs** | ~1 GB/month | ~$0.50 |
+| **EventBridge** | Scheduled rules | $0.00 |
+| **Secrets Manager** | 1 secret | ~$0.40 |
+| **TOTAL** | | **~$18.15/month** |
 
 ## 📁 Architecture
 
@@ -28,8 +42,6 @@ aws/deployment/scout/
 ├── management-commands.sh        # Service management utilities
 └── README.md                     # This file
 ```
-
----
 
 ## 📋 Prerequisites
 
@@ -72,8 +84,6 @@ Create `.env` file in the **project root** (`Aligno/.env`) with:
     AWS_DB_PASSWORD=your_password
     ```
 
----
-
 ## 🛠 First-Time Setup
 
 ### Step 1: Run Full Deployment
@@ -108,8 +118,6 @@ This script will:
 ./management-commands.sh run-now
 ```
 
----
-
 ## 🔄 Updating Code
 
 After making code changes in `src/scout/`, deploy the update:
@@ -126,8 +134,6 @@ This will:
 4. Update EventBridge rule to use new revision
 
 **Note:** The next scheduled run (or manual run) will use the new code.
-
----
 
 ## 🎛 Management Commands
 
@@ -169,22 +175,6 @@ Enable or disable automatic daily runs.
 ./management-commands.sh update-schedule 'cron(0 3 * * ? *)'
 ```
 Change schedule (example: 3 AM UTC).
-
----
-
-## 💰 Cost Estimation
-
-| Service | Configuration | Monthly Cost |
-|---------|--------------|--------------|
-| **RDS** | db.t4g.micro, 20 GB storage | ~$14.80 |
-| **Fargate** | 1 vCPU, 2 GB RAM, ~30 runs × 30 min | ~$2.40 |
-| **ECR** | ~500 MB image storage | ~$0.05 |
-| **CloudWatch Logs** | ~1 GB/month | ~$0.50 |
-| **EventBridge** | Scheduled rules | $0.00 |
-| **Secrets Manager** | 1 secret | ~$0.40 |
-| **TOTAL** | | **~$18.15/month** |
-
----
 
 ## 🔗 Related Documentation
 
