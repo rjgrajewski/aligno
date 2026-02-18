@@ -47,7 +47,7 @@ Scrolling algorithm:
 
 ### 2. Data Extraction Phase
 
-For each new offer URL, Scout navigates to the individual offer page and extracts structured data fields (such as job title, company, and location) by applying dedicated selectors for each data point. The extracted information is then saved into the database as a new entry in the `offers` table.
+For each new offer URL, Scout navigates to the individual offer page and extracts structured data fields (such as job title, company, location, and full job description) by applying dedicated selectors for each data point. The extracted information is then saved into the database as a new entry in the `offers` table.
 
 ### 3. Cleanup Phase
 
@@ -119,6 +119,11 @@ class JustJoinItSelectors:
     JOB_TITLE = SelectorConfig(
         primary='h1',
         description="Main job title heading"
+    )
+
+    JOB_DESCRIPTION = SelectorConfig(
+        primary=':is(h1, h2, h3, h4, h5, h6):has-text("Job description") + div',
+        description="Full job description container"
     )
     
     COMPANY = SelectorConfig(
@@ -264,6 +269,7 @@ CREATE TABLE IF NOT EXISTS offers (
     employment_type TEXT,
     operating_mode TEXT,
     tech_stack TEXT,
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```

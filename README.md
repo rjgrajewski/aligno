@@ -18,7 +18,8 @@ Aligno is a web application for collecting, processing and analyzing job offers 
 2. ✅ **Scout** *[(Documentation)](./src/scout/README.md)*
    - Playwright-based scraper that automatically collects job-offer links and detailed information from JustJoin.it.
    - Supports automated task scheduling and execution in AWS Fargate, enabling continuous collection of new offers, and removal of expired or stale offers without manual intervention.
-   - Handles three phases: efficient link collection, detailed data extraction, and cleanup.
+   - Opens each offer page to extract full job description, ensuring comprehensive data collection for analysis.
+   - Handles three phases: efficient link collection, detailed data extraction (including descriptions), and cleanup.
 
 3. 🛠️ **Atlas** *(In Progress)*
    - Backend service powered by AI to automatically analyze and categorize skills, technologies, and other details within job offers.
@@ -47,7 +48,10 @@ Aligno is a web application for collecting, processing and analyzing job offers 
 Aligno/
 ├─ src/                                # Source code directory
 │  ├─ atlas/                           # Atlas module (AI based processing)
-│  │  ├─ placeholder
+│  ├─ atlas/                           # Atlas module (AI based processing)
+│  │  ├─ __main__.py                   # Entry point for Atlas
+│  │  ├─ categorize_skills.py          # Logic for categorizing extracted skills
+│  │  ├─ extract_skills.py             # Logic for extracting skills from descriptions
 │  │  └─ README.md                     # Documentation for the Atlas module
 │  ├─ scout/                           # Web scraping module for automatic job offer collection from JustJoin.it
 │  │  ├─ __main__.py                   # Main entry point for launching the Scout
