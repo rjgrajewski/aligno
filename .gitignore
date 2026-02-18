@@ -4,6 +4,7 @@ __pycache__/
 .env
 .venv/
 venv/
+aws/
 
 # Generated deployment files
 aws/deployment/scraper/ecs-task-definition.json
