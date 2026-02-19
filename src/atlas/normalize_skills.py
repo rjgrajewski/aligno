@@ -476,11 +476,21 @@ async def link_offers_to_skills(conn: asyncpg.Connection):
                      
     logging.info("✅ Linking completed.")
 
-async def run_normalization_process(stage: str = 'all'):
+async def clear_skills_tables(conn: asyncpg.Connection):
+    """Clear skills and all tables that reference it (offer_skills, user_skills)."""
+    logging.info("🗑️ Clearing skills table and dependent tables (offer_skills, user_skills)...")
+    await conn.execute("TRUNCATE skills CASCADE")
+    logging.info("✅ Skills and dependent tables cleared.")
+
+
+async def run_normalization_process(stage: str = 'all', clear_first: bool = False):
     dsn = get_database_dsn()
     conn = await asyncpg.connect(dsn=dsn)
     
     try:
+        if clear_first:
+            await clear_skills_tables(conn)
+
         # Load environment variables for Bedrock
         session = boto3.Session(
             aws_access_key_id=os.getenv('AWS_BEDROCK_ACCESS_KEY'),
@@ -496,7 +506,7 @@ async def run_normalization_process(stage: str = 'all'):
             await conn.executemany("""
                 INSERT INTO skills (original_skill_name, category)
                 VALUES ($1, $2)
-                ON CONFLICT (original_skill_name) DO NOTHING
+                ON CONFLICT (original_skill_name) WHERE canonical_skill_name IS NULL DO NOTHING
             """, [(s, skill_category_map[s]) for s in distinct_skills])
             logging.info("✅ Distinct skills populated in DB.")
 
@@ -528,8 +538,8 @@ async def run_normalization_process(stage: str = 'all'):
     finally:
         await conn.close()
 
-def main(stage: str = 'all'):
-    return run_normalization_process(stage=stage)
+def main(stage: str = 'all', clear_first: bool = False):
+    return run_normalization_process(stage=stage, clear_first=clear_first)
 
 if __name__ == "__main__":
     main()

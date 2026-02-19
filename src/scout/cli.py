@@ -7,6 +7,7 @@ from .db import init_db_connection, check_connection, reconnect_db, cleanup_empt
 from .scrape_core import init_browser, collect_offer_links, process_offers
 from .config import ScrapingConfig
 from .aws_secrets import setup_database_credentials_from_secrets
+from .invoke_normalize import invoke_normalize_lambda
 
 # Logging configuration - MUST be first before any logging calls
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -60,6 +61,9 @@ async def main():
         await cleanup_empty_offers(conn)
         
         logging.info(f"🎉 Scraping completed successfully!")
+
+        # Trigger normalization Lambda so it runs only after today's scrape is done
+        invoke_normalize_lambda()
 
     except Exception as e:
         logging.error(f"❌ Error during scraping: {e}")

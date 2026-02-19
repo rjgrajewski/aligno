@@ -17,11 +17,12 @@ def main():
     # Normalize
     norm_parser = subparsers.add_parser("normalize", help="Run skill normalization")
     norm_parser.add_argument("--stage", type=str, default="all", choices=["all", "extract", "normalize", "deduplicate", "link"], help="Stage to run.")
+    norm_parser.add_argument("--clear", action="store_true", help="Clear skills and offer_skills tables before running.")
     
     args = parser.parse_args()
     
     if args.command == "normalize":
-        asyncio.run(normalize_main(stage=args.stage))
+        asyncio.run(normalize_main(stage=args.stage, clear_first=args.clear))
     else:
         parser.print_help()
 

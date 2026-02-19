@@ -115,4 +115,4 @@ flowjob/
 
 ---
 
-*Built by Rafał Grajewski*
+*Built by Rafal Grajewski*
