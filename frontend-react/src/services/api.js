@@ -29,12 +29,26 @@ export const api = {
         if (!res.ok) throw new Error('Failed to fetch offers');
         return res.json();
     },
-    saveUserCV: async (cvData) => {
-        localStorage.setItem('flowjob_cv', JSON.stringify(cvData));
-        return { success: true };
+    saveUserCV: async (userId, cvData) => {
+        if (!userId) return { success: false };
+        const res = await fetch(`${BASE}/users/${userId}/skills`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cvData)
+        });
+        if (!res.ok) throw new Error('Failed to save skills');
+        return res.json();
     },
-    getUserCV: () => {
-        return JSON.parse(localStorage.getItem('flowjob_cv')) || { skills: [], antiSkills: [] };
+    getUserCV: async (userId) => {
+        if (!userId) return { skills: [], antiSkills: [] };
+        try {
+            const res = await fetch(`${BASE}/users/${userId}/skills`);
+            if (!res.ok) throw new Error('Failed to fetch user skills');
+            return await res.json();
+        } catch (e) {
+            console.error(e);
+            return { skills: [], antiSkills: [] };
+        }
     },
 };
 
@@ -72,7 +86,6 @@ export const auth = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: userData.name,
                     email: userData.email,
                     password: userData.password,
                 }),

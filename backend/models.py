@@ -26,7 +26,6 @@ class User(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    name: str
     email: str
     password: str
 
@@ -34,3 +33,11 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class UserSkillsRequest(BaseModel):
+    skills: List[str] = []
+    antiSkills: List[str] = []
+
+class UserSkillsResponse(BaseModel):
+    skills: List[str]
+    antiSkills: List[str]

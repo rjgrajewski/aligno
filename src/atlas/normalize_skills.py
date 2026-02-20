@@ -64,6 +64,39 @@ def split_multi_skill_string(raw: str) -> List[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def parse_tech_stack(tech_stack: str) -> List[str]:
+    """Parse a tech stack string into a list of raw skills."""
+    skills_list = []
+    ts_str = tech_stack.strip()
+    
+    # 1. Try JSON
+    if ts_str.startswith('[') or ts_str.startswith('{'):
+        try:
+            parsed = json.loads(ts_str)
+            if isinstance(parsed, list):
+                return [str(s) for s in parsed]
+            elif isinstance(parsed, dict):
+                return [str(s) for s in parsed.keys()]
+        except json.JSONDecodeError:
+            pass
+            
+    # 2. Text Parsing
+    delimiter = ';' if ';' in ts_str else ','
+    parts = ts_str.split(delimiter)
+    
+    for p in parts:
+        if ':' in p:
+            s_name = p.split(':', 1)[0].strip()
+        else:
+            s_name = p.strip()
+        
+        if s_name:
+            skills_list.append(s_name)
+            
+    return skills_list
+
+
+
 
 async def init_tables(conn: asyncpg.Connection):
     """Initialize necessary tables."""
@@ -109,39 +142,7 @@ async def extract_distinct_skills(conn: asyncpg.Connection):
         tech_stack = row['tech_stack']
         category = row['category']
         try:
-            skills_list = []
-            ts_str = tech_stack.strip()
-            
-            # 1. Try JSON
-            if ts_str.startswith('[') or ts_str.startswith('{'):
-                try:
-                    parsed = json.loads(ts_str)
-                    if isinstance(parsed, list):
-                        skills_list = parsed
-                    elif isinstance(parsed, dict):
-                        skills_list = list(parsed.keys())
-                except json.JSONDecodeError:
-                    pass
-            
-            # 2. Text Parsing (if JSON failed or wasn't JSON)
-            if not skills_list:
-                # Split by semicolon first (common in this dataset)
-                # Format: "Skill: Level; Skill2: Level"
-                delimiter = ';' if ';' in ts_str else ','
-                parts = ts_str.split(delimiter)
-                
-                for p in parts:
-                    # Remove level suffix if present (e.g. "Java: Regular")
-                    # But be careful about "C++: Advanced" -> "C++" vs "Project: X"
-                    # Heuristic: split by last colon? Or first?
-                    # "Java: Regular" -> split on first colon is safe usually.
-                    if ':' in p:
-                        s_name = p.split(':', 1)[0].strip()
-                    else:
-                        s_name = p.strip()
-                    
-                    if s_name:
-                        skills_list.append(s_name)
+            skills_list = parse_tech_stack(str(tech_stack)) if tech_stack else []
 
             for skill in skills_list:
                 skill_clean = str(skill).strip()
@@ -507,12 +508,9 @@ async def link_offers_to_skills(conn: asyncpg.Connection):
             # Parse stack
             try:
                 if isinstance(tech_stack, str):
-                    try:
-                        skills_list = json.loads(tech_stack)
-                    except Exception:
-                        skills_list = [s.strip() for s in tech_stack.split(',')]
+                    skills_list = parse_tech_stack(tech_stack)
                 elif isinstance(tech_stack, list):
-                    skills_list = tech_stack
+                    skills_list = [str(s) for s in tech_stack]
                 else:
                     skills_list = []
             except Exception:

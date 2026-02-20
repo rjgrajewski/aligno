@@ -8,16 +8,33 @@ _db_pool: asyncpg.Pool = None
 
 async def init_db_pool():
     global _db_pool
+    secret_arn = os.getenv("SECRET_ARN")
+    if secret_arn:
+        # Fallback to AWS_BEDROCK_ACCESS_KEY if standard AWS credentials are not set
+        if not os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_BEDROCK_ACCESS_KEY"):
+            os.environ["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_BEDROCK_ACCESS_KEY")
+        if not os.getenv("AWS_SECRET_ACCESS_KEY") and os.getenv("AWS_BEDROCK_SECRET_ACCESS_KEY"):
+            os.environ["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_BEDROCK_SECRET_ACCESS_KEY")
+
+        try:
+            import sys
+            sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+            from src.scout.aws_secrets import setup_database_credentials_from_secrets
+            setup_database_credentials_from_secrets(secret_arn)
+        except Exception as e:
+            print(f"Failed to load secrets from AWS: {e}")
+
     user = os.getenv("AWS_DB_USERNAME")
     password = os.getenv("AWS_DB_PASSWORD")
     host = os.getenv("AWS_DB_ENDPOINT")
     dbname = os.getenv("AWS_DB_NAME")
     
     if not all([user, password, host, dbname]):
-        raise ValueError("Database credentials missing in .env file")
+        raise ValueError("Database credentials missing in .env file and AWS Secrets failed")
         
-    dsn = f"postgres://{user}:{password}@{host}:5432/{dbname}"
-    
+    import urllib.parse
+    encoded_password = urllib.parse.quote_plus(password)
+    dsn = f"postgres://{user}:{encoded_password}@{host}:5432/{dbname}?sslmode=require"
     _db_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=10)
 
 async def close_db_pool():

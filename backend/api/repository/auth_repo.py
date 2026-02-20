@@ -1,20 +1,21 @@
 from asyncpg import Pool
-from passlib.hash import bcrypt
+import bcrypt
 
 class AuthRepository:
     def __init__(self, pool: Pool):
         self.pool = pool
 
-    async def create_user(self, email: str, name: str, password: str) -> dict:
-        password_hash = bcrypt.hash(password)
+    async def create_user(self, email: str, password: str) -> dict:
+        # bcrypt requires bytes
+        password_bytes = password.encode('utf-8')
+        password_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
         async with self.pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO users (email, full_name, provider, provider_id, password_hash)
-                VALUES ($1, $2, 'email', $1, $3)
+                INSERT INTO users (email, provider, provider_id, password_hash)
+                VALUES ($1, 'email', $1, $2)
                 """,
                 email.strip().lower(),
-                (name or "").strip() or None,
                 password_hash,
             )
             row = await conn.fetchrow(
@@ -35,7 +36,9 @@ class AuthRepository:
             )
             if not row or not row["password_hash"]:
                 return None
-            if not bcrypt.verify(password, row["password_hash"]):
+            password_bytes = password.encode('utf-8')
+            hash_bytes = row["password_hash"].encode('utf-8')
+            if not bcrypt.checkpw(password_bytes, hash_bytes):
                 return None
             return {
                 "id": row["id"],

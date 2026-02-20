@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../services/api.js';
+import { api, auth } from '../services/api.js';
 import { useSkills } from '../hooks/useSkills.js';
 
 const BUBBLE_COLORS = [
@@ -78,13 +78,43 @@ export default function CVBuilder() {
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(new Set());
     const [anti, setAnti] = useState(new Set());
-    const [saved, setSaved] = useState(false);
+    const [saved, setSaved] = useState('');
+    const saveTimeout = useRef(null);
+    const initialLoadDone = useRef(false);
 
     useEffect(() => {
-        const cv = api.getUserCV();
-        setSelected(new Set(cv.skills || []));
-        setAnti(new Set(cv.antiSkills || []));
+        let mounted = true;
+        const load = async () => {
+            const user = auth.getUser();
+            if (!user) return;
+            const cv = await api.getUserCV(user.id);
+            if (!mounted) return;
+            setSelected(new Set(cv.skills || []));
+            setAnti(new Set(cv.antiSkills || []));
+            setTimeout(() => { if (mounted) initialLoadDone.current = true; }, 100);
+        };
+        load();
+        return () => { mounted = false; };
     }, []);
+
+    useEffect(() => {
+        if (!initialLoadDone.current) return;
+        const user = auth.getUser();
+        if (!user) return;
+
+        setSaved('Saving...');
+        if (saveTimeout.current) clearTimeout(saveTimeout.current);
+
+        saveTimeout.current = setTimeout(async () => {
+            try {
+                await api.saveUserCV(user.id, { skills: [...selected], antiSkills: [...anti] });
+                setSaved('Saved!');
+                setTimeout(() => setSaved(''), 2500);
+            } catch (e) {
+                setSaved('Error saving');
+            }
+        }, 1000);
+    }, [selected, anti]);
 
     const maxFreq = Math.max(...skills.map(s => s.frequency || 0), 1);
 
@@ -109,12 +139,6 @@ export default function CVBuilder() {
             return n;
         });
     }, []);
-
-    const handleSave = async () => {
-        await api.saveUserCV({ skills: [...selected], antiSkills: [...anti] });
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2500);
-    };
 
     return (
         <div style={styles.wrapper}>
@@ -146,13 +170,24 @@ export default function CVBuilder() {
                     </div>
                 </div>
 
-                <button
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', marginTop: 'auto' }}
-                    onClick={handleSave}
-                >
-                    {saved ? '✓ Saved!' : 'Save Profile'}
-                </button>
+                <div style={{ marginTop: 'auto', textAlign: 'center', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AnimatePresence>
+                        {saved && (
+                            <motion.span
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                style={{
+                                    fontSize: '0.9rem',
+                                    fontWeight: 600,
+                                    color: saved === 'Saved!' ? 'var(--accent-cyan)' : saved.includes('Error') ? 'var(--accent-red)' : 'var(--text-secondary)'
+                                }}
+                            >
+                                {saved === 'Saved!' ? '✓ ' : ''}{saved}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </div>
             </aside>
 
             {/* MAIN AREA */}
