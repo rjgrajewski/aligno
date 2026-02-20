@@ -1,16 +1,40 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { auth } from '../services/api.js';
 
+// Zwraca { score: 0-4, label, color } na podstawie długości i złożoności hasła
+function getPasswordStrength(password) {
+    if (!password) return { score: 0, label: '', color: 'var(--border)' };
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    score = Math.min(score, 4);
+    const levels = [
+        { label: 'Bardzo słabe', color: 'var(--accent-red)' },
+        { label: 'Słabe', color: 'var(--accent-amber)' },
+        { label: 'Średnie', color: 'var(--accent-cyan)' },
+        { label: 'Silne', color: 'var(--accent-green)' },
+    ];
+    const idx = score === 0 ? 0 : Math.min(score, 3);
+    return { score, ...levels[idx] };
+}
+
 export default function Register() {
     const [tab, setTab] = useState('register'); // 'register' | 'login'
-    const [form, setForm] = useState({ name: '', email: '', password: '' });
+    const [form, setForm] = useState({ name: '', email: '', password: '', passwordConfirm: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+
+    const passwordStrength = useMemo(() => getPasswordStrength(form.password), [form.password]);
+    const passwordsMatch = form.password === form.passwordConfirm;
+    const showPasswordMismatch = tab === 'register' && form.passwordConfirm.length > 0 && !passwordsMatch;
 
     const handleSubmit = async e => {
         e.preventDefault();
@@ -18,16 +42,26 @@ export default function Register() {
         setLoading(true);
         try {
             if (tab === 'register') {
-                if (!form.name.trim()) { setError('Name is required'); setLoading(false); return; }
-                await auth.register(form);
+                if (!form.name.trim()) { setError('Imię jest wymagane'); return; }
+                if (form.password !== form.passwordConfirm) {
+                    setError('Hasła muszą być identyczne');
+                    return;
+                }
+                if (form.password.length < 8) {
+                    setError('Hasło musi mieć co najmniej 8 znaków');
+                    return;
+                }
+                const { passwordConfirm: _, ...registerData } = form;
+                await auth.register(registerData);
             } else {
                 await auth.login(form.email, form.password);
             }
             navigate('/cv');
         } catch (err) {
-            setError('Something went wrong. Try again.');
+            setError(err?.message || 'Coś poszło nie tak. Spróbuj ponownie.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
@@ -95,13 +129,57 @@ export default function Register() {
                             <div className="form-group">
                                 <label className="form-label">Password</label>
                                 <input className="form-input" type="password" name="password" value={form.password} onChange={handleChange} placeholder="••••••••" required />
+                                {tab === 'register' && form.password && (
+                                    <div style={styles.strengthWrap}>
+                                        <div style={styles.strengthBar}>
+                                            {[1, 2, 3, 4].map(i => (
+                                                <span
+                                                    key={i}
+                                                    style={{
+                                                        ...styles.strengthSegment,
+                                                        background: passwordStrength.score >= i ? passwordStrength.color : 'var(--border)',
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span style={{ color: passwordStrength.color, fontSize: '0.8rem', fontWeight: 500 }}>
+                                            {passwordStrength.label}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
+
+                            {tab === 'register' && (
+                                <div className="form-group">
+                                    <label className="form-label">Potwierdź hasło</label>
+                                    <input
+                                        className="form-input"
+                                        type="password"
+                                        name="passwordConfirm"
+                                        value={form.passwordConfirm}
+                                        onChange={handleChange}
+                                        placeholder="••••••••"
+                                        required
+                                        style={showPasswordMismatch ? { borderColor: 'var(--accent-red)' } : undefined}
+                                    />
+                                    {showPasswordMismatch && (
+                                        <p style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginTop: '0.35rem' }}>
+                                            Hasła nie są identyczne
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             {error && (
                                 <p style={{ color: 'var(--accent-red)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>
                             )}
 
-                            <button type="submit" className="btn btn-primary btn-full" style={{ width: '100%', justifyContent: 'center', padding: '0.8rem' }} disabled={loading}>
+                            <button
+                                type="submit"
+                                className="btn btn-primary btn-full"
+                                style={{ width: '100%', justifyContent: 'center', padding: '0.8rem' }}
+                                disabled={loading || (tab === 'register' && (showPasswordMismatch || form.password.length < 8))}
+                            >
                                 {loading ? 'Loading...' : tab === 'register' ? 'Create Account →' : 'Sign In →'}
                             </button>
                         </motion.form>
@@ -178,5 +256,21 @@ const styles = {
         background: 'var(--bg-elevated)',
         color: 'var(--accent-cyan)',
         boxShadow: '0 0 0 1px var(--border)',
+    },
+    strengthWrap: {
+        marginTop: '0.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.35rem',
+    },
+    strengthBar: {
+        display: 'flex',
+        gap: '4px',
+    },
+    strengthSegment: {
+        flex: 1,
+        height: 4,
+        borderRadius: 2,
+        transition: 'background 0.2s',
     },
 };

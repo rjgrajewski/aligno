@@ -242,9 +242,29 @@ Input:
         text = response_body['content'][0]['text'].strip()
         
         if text.startswith("```json"): text = text.split("```json")[1]
+        text = text.strip()
         if text.endswith("```"): text = text.rsplit("```", 1)[0]
         
-        result_map = json.loads(text.strip())
+        result_map = {}
+        try:
+            result_map = json.loads(text.strip())
+        except json.JSONDecodeError as e:
+            logging.warning(f"⚠️ JSON Decode Error. Attempting to repair truncated JSON...")
+            # Simple repair: slice up to the last known good pair
+            text_clean = text.strip()
+            # If it ends abruptly, find the last comma and close the object
+            last_comma = text_clean.rfind(',')
+            if last_comma != -1:
+                repaired_text = text_clean[:last_comma] + '\n}'
+                try:
+                    result_map = json.loads(repaired_text)
+                    logging.info("✅ Successfully repaired truncated JSON.")
+                except json.JSONDecodeError:
+                    logging.error(f"❌ Could not repair JSON: {e}")
+                    return {}
+            else:
+                logging.error(f"❌ JSON is too mangled: {e}")
+                return {}
         
         # DEBUG: Check for mismatches
         input_keys = {s['original_skill_name'] for s in skills_data}
@@ -255,8 +275,6 @@ Input:
         
         if missing or extra:
             logging.warning(f"⚠️ Key Mismatch in batch! Missing: {len(missing)}, Extra: {len(extra)}")
-            if missing: logging.warning(f"Sample Missing: {list(missing)[:3]}")
-            if extra: logging.warning(f"Sample Extra: {list(extra)[:3]}")
             
         return result_map
         
@@ -289,36 +307,69 @@ async def update_canonical_names(conn: asyncpg.Connection, mapping: Dict[str, ob
         else:
             single_updates.append((original, str(canonical)))
 
-    # 1. Update existing pending rows
+    # Fetch all existing normalized pairs once
+    existing_rows = await conn.fetch(
+        "SELECT original_skill_name, canonical_skill_name FROM skills WHERE canonical_skill_name IS NOT NULL"
+    )
+    existing_pairs = {(r['original_skill_name'], r['canonical_skill_name']) for r in existing_rows}
+
+    # 1. Process single updates (updating the existing row where canonical_skill_name IS NULL)
     if single_updates:
-        await conn.executemany("""
-            UPDATE skills
-            SET canonical_skill_name = $2
-            WHERE original_skill_name = $1
-              AND canonical_skill_name IS NULL
-        """, single_updates)
-        logging.info(f"✅ Updated {len(single_updates)} skills with canonical names.")
+        filtered_single = []
+        to_delete_nulls = []
+        
+        for orig, canon in single_updates:
+            if (orig, canon) in existing_pairs:
+                # Target normalized name already exists. The pending NULL row is redundant and must be cleared.
+                to_delete_nulls.append(orig)
+            else:
+                filtered_single.append((orig, canon))
+                existing_pairs.add((orig, canon))  # Prevent duplicates within the same batch
+                
+        if to_delete_nulls:
+            await conn.execute("DELETE FROM skills WHERE original_skill_name = ANY($1) AND canonical_skill_name IS NULL", to_delete_nulls)
+            logging.info(f"🗑️ Deleted {len(to_delete_nulls)} redundant NULL rows because normalized versions already exist.")
+            
+        if filtered_single:
+            try:
+                await conn.executemany("""
+                    UPDATE skills
+                    SET canonical_skill_name = $2
+                    WHERE original_skill_name = $1
+                      AND canonical_skill_name IS NULL
+                """, filtered_single)
+                logging.info(f"✅ Updated {len(filtered_single)} skills with canonical names.")
+            except asyncpg.exceptions.UniqueViolationError as e:
+                logging.error(f"❌ Unexpected UniqueViolation on UPDATE: {e}")
 
-    # 2. Insert extra rows for multi-canonical skills
+    # 2. Process extra rows for multi-canonical skills (inserting new rows)
     if multi_inserts:
-        # Fetch category for each original skill to carry over to new rows
-        originals = list({orig for orig, _ in multi_inserts})
-        cat_rows = await conn.fetch(
-            "SELECT original_skill_name, category FROM skills WHERE original_skill_name = ANY($1)",
-            originals
-        )
-        cat_map = {r['original_skill_name']: r['category'] for r in cat_rows}
+        filtered_inserts = []
+        for orig, canon in multi_inserts:
+            if (orig, canon) not in existing_pairs:
+                filtered_inserts.append((orig, canon))
+                existing_pairs.add((orig, canon))
 
-        insert_data = [
-            (orig, canon, cat_map.get(orig))
-            for orig, canon in multi_inserts
-        ]
-        await conn.executemany("""
-            INSERT INTO skills (original_skill_name, canonical_skill_name, category)
-            VALUES ($1, $2, $3)
-            ON CONFLICT DO NOTHING
-        """, insert_data)
-        logging.info(f"✅ Inserted {len(multi_inserts)} extra canonical rows for multi-skill strings.")
+        if filtered_inserts:
+            # Fetch category for each original skill to carry over to new rows
+            originals = list({orig for orig, _ in filtered_inserts})
+            cat_rows = await conn.fetch(
+                "SELECT original_skill_name, category FROM skills WHERE original_skill_name = ANY($1)",
+                originals
+            )
+            cat_map = {r['original_skill_name']: r['category'] for r in cat_rows}
+
+            insert_data = [
+                (orig, canon, cat_map.get(orig))
+                for orig, canon in filtered_inserts
+            ]
+            await conn.executemany("""
+                INSERT INTO skills (original_skill_name, canonical_skill_name, category)
+                VALUES ($1, $2, $3)
+            """, insert_data)
+            logging.info(f"✅ Inserted {len(filtered_inserts)} extra canonical rows for multi-skill strings.")
+        else:
+            logging.info("✅ No new extra canonical rows to insert.")
 
 async def deduplicate_canonical_skills(conn: asyncpg.Connection, bedrock_client):
     """
@@ -404,18 +455,28 @@ Example Output:
     if updates:
         logging.info(f"Applying {len(updates)} semantic merges to DB...")
         
-        # We need to update existing rows to point to the new canonical name
-        # BUT wait, multiple raw skills might map to the same OLD canonical.
-        # We just need to update `canonical_skill_name` where it matches the old one.
-        
-        update_query = """
-            UPDATE skills 
-            SET canonical_skill_name = $1 
-            WHERE canonical_skill_name = $2
-        """
-        
-        batch = [(new, old) for old, new in updates.items()]
-        await conn.executemany(update_query, batch)
+        for old_canon, new_canon in updates.items():
+            try:
+                # 1. Update where no conflict will occur
+                await conn.execute("""
+                    UPDATE skills s1
+                    SET canonical_skill_name = $1
+                    WHERE s1.canonical_skill_name = $2
+                      AND NOT EXISTS (
+                          SELECT 1 FROM skills s2 
+                          WHERE s2.original_skill_name = s1.original_skill_name 
+                            AND s2.canonical_skill_name = $1
+                      )
+                """, new_canon, old_canon)
+                
+                # 2. Delete the rest (which would have conflicted because the new name is already there)
+                await conn.execute("""
+                    DELETE FROM skills 
+                    WHERE canonical_skill_name = $1
+                """, old_canon)
+            except Exception as e:
+                logging.error(f"❌ Error merging '{old_canon}' into '{new_canon}': {e}")
+
         logging.info("✅ Semantic deduplication applied.")
 
 async def link_offers_to_skills(conn: asyncpg.Connection):

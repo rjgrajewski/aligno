@@ -23,3 +23,14 @@ class Offer(BaseModel):
 class User(BaseModel):
     email: str
     name: str
+
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str

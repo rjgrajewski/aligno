@@ -4,27 +4,54 @@ import asyncpg, logging, os
 from pathlib import Path
 from urllib.parse import quote_plus
 
+import json
+import boto3
+
 def get_database_dsn() -> str:
     """Get database DSN from environment variables for AWS RDS or DATABASE_URL."""
     database_url = os.getenv('DATABASE_URL')
     if database_url:
+        if 'sslmode=' not in database_url:
+            separator = '&' if '?' in database_url else '?'
+            database_url += f"{separator}sslmode=require"
         return database_url
     
     # AWS RDS configuration
     aws_endpoint = os.getenv('AWS_DB_ENDPOINT')
+    aws_db_name = os.getenv('AWS_DB_NAME')
     aws_username = os.getenv('AWS_DB_USERNAME')
     aws_password = os.getenv('AWS_DB_PASSWORD')
-    aws_db_name = os.getenv('AWS_DB_NAME')
+    
+    # Attempt to load credentials from AWS Secrets Manager
+    secret_arn = os.getenv('SECRET_ARN')
+    if secret_arn:
+        try:
+            logging.info(f"Fetching credentials from Secrets Manager: {secret_arn}")
+            session = boto3.Session(
+                aws_access_key_id=os.getenv('AWS_BEDROCK_ACCESS_KEY') or os.getenv('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.getenv('AWS_BEDROCK_SECRET_ACCESS_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY'),
+                region_name=os.getenv('AWS_REGION', 'eu-central-1')
+            )
+            client = session.client(service_name='secretsmanager')
+            response = client.get_secret_value(SecretId=secret_arn)
+            if 'SecretString' in response:
+                secret = json.loads(response['SecretString'])
+                aws_username = secret.get('username', aws_username)
+                aws_password = secret.get('password', aws_password)
+                aws_endpoint = secret.get('host', aws_endpoint)
+                aws_db_name = secret.get('dbname', aws_db_name)
+        except Exception as e:
+            logging.error(f"Failed to retrieve secret from Secrets Manager: {e}")
     
     if not all([aws_endpoint, aws_username, aws_password, aws_db_name]):
-        raise ValueError("Missing AWS RDS configuration. Please set AWS_DB_ENDPOINT, AWS_DB_USERNAME, AWS_DB_PASSWORD, and AWS_DB_NAME environment variables.")
+        raise ValueError("Missing AWS configuration. Please set SECRET_ARN, or AWS_DB_ENDPOINT, AWS_DB_USERNAME, AWS_DB_PASSWORD, and AWS_DB_NAME.")
     
     # URL-encode username and password to handle special characters
-    username_encoded = quote_plus(aws_username)
-    password_encoded = quote_plus(aws_password)
+    username_encoded = quote_plus(aws_username or '')
+    password_encoded = quote_plus(aws_password or '')
     
     logging.info(f"Connecting to AWS RDS: {aws_endpoint}")
-    return f"postgresql://{username_encoded}:{password_encoded}@{aws_endpoint}:5432/{aws_db_name}"
+    return f"postgresql://{username_encoded}:{password_encoded}@{aws_endpoint}:5432/{aws_db_name}?sslmode=require"
 
 
 async def init_db_connection() -> asyncpg.Connection:

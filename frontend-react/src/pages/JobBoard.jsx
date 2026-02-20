@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { api } from '../services/api.js';
+import { useOffers } from '../hooks/useOffers.js';
 import JobCard from '../components/JobCard.jsx';
 import FilterBar from '../components/FilterBar.jsx';
 import SparklesBg from '../components/Sparkles.jsx';
 
 export default function JobBoard() {
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { offers: jobs, loading } = useOffers();
     const [userSkills, setUserSkills] = useState([]);
     const [antiSkills, setAntiSkills] = useState([]);
     const [titleFilter, setTitleFilter] = useState('');
@@ -17,10 +17,6 @@ export default function JobBoard() {
         const cv = api.getUserCV();
         setUserSkills(cv.skills || []);
         setAntiSkills(cv.antiSkills || []);
-        api.getJobs().then(data => {
-            setJobs(data);
-            setLoading(false);
-        }).catch(() => setLoading(false));
     }, []);
 
     const processedJobs = useMemo(() => {

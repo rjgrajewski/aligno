@@ -3,6 +3,10 @@ Transform: AWS::Serverless-2016-10-31
 Description: Aligno skill normalization Lambda (daily run).
 
 Parameters:
+  SecretArn:
+    Type: String
+    Default: ""
+    Description: ARN of the AWS Secrets Manager secret containing RDS credentials ("username", "password", "host", "dbname").
   DatabaseUrl:
     Type: String
     Default: ""
@@ -51,6 +55,7 @@ Resources:
         - !Ref NormalizeSkillsLayer
       Environment:
         Variables:
+          SECRET_ARN: !Ref SecretArn
           DATABASE_URL: !Ref DatabaseUrl
       # AWS_REGION is set automatically by Lambda; AwsRegion is only used in parameters (Schedule etc.)
       Policies:
@@ -60,6 +65,13 @@ Resources:
               Action:
                 - bedrock:InvokeModel
               Resource: "*"
+            - !If
+              - HasSecretArn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref SecretArn
+              - !Ref "AWS::NoValue"
       Events:
         DailySchedule:
           Type: Schedule
@@ -80,6 +92,7 @@ Resources:
 Conditions:
   ScheduleEnabled: !Equals [ !Ref ScheduleEnabled, "true" ]
   HasScraperRole: !Not [ !Equals [ !Ref ScraperRoleArn, "" ] ]
+  HasSecretArn: !Not [ !Equals [ !Ref SecretArn, "" ] ]
 
 Outputs:
   NormalizeSkillsArn:

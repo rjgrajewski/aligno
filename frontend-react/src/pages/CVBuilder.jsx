@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api.js';
+import { useSkills } from '../hooks/useSkills.js';
 
 const BUBBLE_COLORS = [
     ['rgba(0,229,255,0.1)', 'rgba(0,229,255,0.5)'],
@@ -73,8 +74,7 @@ function SkillBubble({ skill, idx, maxFreq, isSelected, isAnti, onLeft, onRight 
 }
 
 export default function CVBuilder() {
-    const [skills, setSkills] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { skills, loading } = useSkills();
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(new Set());
     const [anti, setAnti] = useState(new Set());
@@ -84,10 +84,6 @@ export default function CVBuilder() {
         const cv = api.getUserCV();
         setSelected(new Set(cv.skills || []));
         setAnti(new Set(cv.antiSkills || []));
-        api.getSkills().then(data => {
-            setSkills(data);
-            setLoading(false);
-        }).catch(() => setLoading(false));
     }, []);
 
     const maxFreq = Math.max(...skills.map(s => s.frequency || 0), 1);

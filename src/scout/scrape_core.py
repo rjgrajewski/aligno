@@ -1,6 +1,7 @@
 # scrape_core.py
 import asyncio
 import re
+from typing import Optional
 from playwright.async_api import async_playwright, Page
 import logging
 from .selectors import SELECTORS, PATTERNS, get_selector
@@ -15,6 +16,21 @@ def sanitize_string(value, max_length=None):
     if max_length and len(cleaned) > max_length:
         cleaned = cleaned[:max_length]
     return cleaned if cleaned else None
+
+async def extract_element_text(page: Page, selector: str, fallback_selector: str = None, name: str = "element") -> Optional[str]:
+    """Helper to safely extract text from a Playwright locator with optional fallback."""
+    try:
+        element = page.locator(selector).first
+        if await element.count() > 0:
+            return await element.inner_text()
+            
+        if fallback_selector:
+            fallback = page.locator(fallback_selector).first
+            if await fallback.count() > 0:
+                return await fallback.inner_text()
+    except Exception as e:
+        logging.error(f"❌ Error in {name} extraction: {e}")
+    return None
 
 SCROLL_PAUSE = ScrapingConfig.SCROLL_PAUSE_TIME
 
@@ -155,116 +171,16 @@ async def process_offers(page: Page, conn, offer_urls: list[str], browser=None, 
             # Extract job details
             job_url = href
             
-            # Job title
-            job_title = None
-            try:
-                title_element = page.locator(get_selector(SELECTORS.JOB_TITLE)).first
-                if await title_element.count() > 0:
-                    job_title = await title_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in job title extraction: {e}")
-                pass
-            
-            # Location - try Pin Icon (Container) first, then Breadcrumb Fallback
-            location = None
-            try:
-                # Primary: Pin Icon Container
-                location_element = page.locator(get_selector(SELECTORS.LOCATION)).first
-                if await location_element.count() > 0:
-                    location = await location_element.inner_text()
-                
-                # Fallback: Breadcrumb
-                if not location:
-                    location_element = page.locator(SELECTORS.LOCATION.fallback).first
-                    if await location_element.count() > 0:
-                        location = await location_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in location extraction: {e}")
-                pass
-            
-            # Company - look for link with ApartmentRoundedIcon
-            company = None
-            try:
-                company_element = page.locator(get_selector(SELECTORS.COMPANY)).first
-                if await company_element.count() > 0:
-                    company = await company_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in company extraction: {e}")
-                pass
-            
-            # Category - try Pill first (Red), then Breadcrumb (Yellow)
-            category = None
-            try:
-                # Try Pill
-                category_element = page.locator(get_selector(SELECTORS.CATEGORY_PILL)).first
-                if await category_element.count() > 0:
-                    category = await category_element.inner_text()
-                
-                # Fallback to Breadcrumb if Pill failed or empty
-                if not category:
-                    category_element = page.locator(get_selector(SELECTORS.CATEGORY_BREADCRUMB)).first
-                    if await category_element.count() > 0:
-                        category = await category_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in category extraction: {e}")
-                pass
-            
-            # Work schedule
-            work_schedule = None
-            try:
-                work_schedule_element = page.locator(get_selector(SELECTORS.WORK_SCHEDULE)).first
-                if await work_schedule_element.count() > 0:
-                    work_schedule = await work_schedule_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in work schedule extraction: {e}")
-                pass
-            
-            # Employment type
-            employment_type = None
-            try:
-                employment_element = page.locator(get_selector(SELECTORS.EMPLOYMENT_TYPE)).first
-                if await employment_element.count() > 0:
-                    employment_type = await employment_element.inner_text()
-                    # Note: inner text of the container usually lists all types e.g. "B2B, Permanent, Mandate"
-            except Exception as e:
-                logging.error(f"❌ Error in employment type extraction: {e}")
-                pass
-            
-            # Experience
-            experience = None
-            try:
-                experience_element = page.locator(get_selector(SELECTORS.EXPERIENCE)).first
-                if await experience_element.count() > 0:
-                    experience = await experience_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in experience extraction: {e}")
-                pass
-            
-            # Operating mode
-            operating_mode = None
-            try:
-                operating_mode_element = page.locator(get_selector(SELECTORS.OPERATING_MODE)).first
-                if await operating_mode_element.count() > 0:
-                    operating_mode = await operating_mode_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in operating mode extraction: {e}")
-                pass
-
-            # Job Description
-            description = None
-            try:
-                description_element = page.locator(get_selector(SELECTORS.JOB_DESCRIPTION)).first
-                if await description_element.count() > 0:
-                    description = await description_element.inner_text()
-                
-                # Fallback if primary fails
-                if not description and SELECTORS.JOB_DESCRIPTION.fallback:
-                    description_element = page.locator(SELECTORS.JOB_DESCRIPTION.fallback).first
-                    if await description_element.count() > 0:
-                        description = await description_element.inner_text()
-            except Exception as e:
-                logging.error(f"❌ Error in description extraction: {e}")
-                pass
+            # Extract simple fields with helper
+            job_title = await extract_element_text(page, get_selector(SELECTORS.JOB_TITLE), name="job title")
+            location = await extract_element_text(page, get_selector(SELECTORS.LOCATION), fallback_selector=SELECTORS.LOCATION.fallback, name="location")
+            company = await extract_element_text(page, get_selector(SELECTORS.COMPANY), name="company")
+            category = await extract_element_text(page, get_selector(SELECTORS.CATEGORY_PILL), fallback_selector=get_selector(SELECTORS.CATEGORY_BREADCRUMB), name="category")
+            work_schedule = await extract_element_text(page, get_selector(SELECTORS.WORK_SCHEDULE), name="work schedule")
+            employment_type = await extract_element_text(page, get_selector(SELECTORS.EMPLOYMENT_TYPE), name="employment type")
+            experience = await extract_element_text(page, get_selector(SELECTORS.EXPERIENCE), name="experience")
+            operating_mode = await extract_element_text(page, get_selector(SELECTORS.OPERATING_MODE), name="operating mode")
+            description = await extract_element_text(page, get_selector(SELECTORS.JOB_DESCRIPTION), fallback_selector=SELECTORS.JOB_DESCRIPTION.fallback, name="description")
             
             # Tech stack - try multiple approaches to find tech items
             tech_stack = {}

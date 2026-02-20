@@ -1,12 +1,17 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database import get_db_connection
-from backend.models import Skill, Offer
-from typing import List
-import asyncpg
+from contextlib import asynccontextmanager
+from backend.database import init_db_pool, close_db_pool
+from backend.api.routers import auth, skills, offers
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db_pool()
+    yield
+    await close_db_pool()
+
+app = FastAPI(lifespan=lifespan)
 
 # Enable CORS for local development if needed, though we serve static files from same origin
 app.add_middleware(
@@ -17,65 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/skills")
-async def get_skills():
-    conn = await get_db_connection()
-    try:
-        # Fetch skills with usage count, grouped by normalized name
-        query = """
-            SELECT 
-                MAX(s.uuid::text) as id, 
-                COALESCE(s.canonical_skill_name, s.original_skill_name) as name, 
-                MAX(s.category) as category,
-                COUNT(os.job_url) as frequency
-            FROM skills s
-            LEFT JOIN offer_skills os ON s.uuid = os.skill_id
-            GROUP BY COALESCE(s.canonical_skill_name, s.original_skill_name)
-            ORDER BY frequency DESC, name ASC
-        """
-        rows = await conn.fetch(query)
-        return [
-            {
-                "id": str(row["id"]), 
-                "name": row["name"], 
-                "category": row["category"],
-                "frequency": row["frequency"]
-            }
-            for row in rows
-        ]
-    finally:
-        await conn.close()
-
-@app.get("/api/jobs")
-async def get_jobs():
-    conn = await get_db_connection()
-    try:
-        # Fetch offers with aggregated skills using correct columns
-        query = """
-            SELECT 
-                o.job_url, o.job_title, o.company, o.description,
-                array_agg(COALESCE(s.canonical_skill_name, s.original_skill_name)) as skills
-            FROM offers o
-            LEFT JOIN offer_skills os ON o.job_url = os.job_url
-            LEFT JOIN skills s ON os.skill_id = s.uuid
-            GROUP BY o.job_url, o.job_title, o.company, o.description
-        """
-        rows = await conn.fetch(query)
-        
-        results = []
-        for row in rows:
-            # Filter out None values from skills array if any
-            skills_list = [s for s in row["skills"] if s] if row["skills"] else []
-            results.append({
-                "id": row["job_url"], # Using URL as ID for frontend
-                "title": row["job_title"],
-                "company": row["company"],
-                "requiredSkills": skills_list,
-                "description": row["description"]
-            })
-        return results
-    finally:
-        await conn.close()
+app.include_router(auth.router)
+app.include_router(skills.router)
+app.include_router(offers.router)
 
 # Mount the static files directory to serve the frontend
 app.mount("/", StaticFiles(directory="frontend", html=True), name="static")

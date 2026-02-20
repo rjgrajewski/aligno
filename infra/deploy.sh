@@ -39,12 +39,13 @@ fi
 if [ -n "$DATABASE_URL" ]; then
   :
 elif [ -n "$AWS_DB_ENDPOINT" ] && [ -n "$AWS_DB_USERNAME" ] && [ -n "$AWS_DB_PASSWORD" ] && [ -n "$AWS_DB_NAME" ]; then
-  PASS_ENC=$(python3 -c 'import urllib.parse, os; print(urllib.parse.quote(os.environ.get("AWS_DB_PASSWORD", ""), safe=""))')
-  DATABASE_URL="postgresql://${AWS_DB_USERNAME}:${PASS_ENC}@${AWS_DB_ENDPOINT}:5432/${AWS_DB_NAME}"
+  PASS_ENC=$(python3 -c 'import urllib.parse, os; print(urllib.parse.quote_plus(os.environ.get("AWS_DB_PASSWORD", "")))')
+  DATABASE_URL="postgresql://${AWS_DB_USERNAME}:${PASS_ENC}@${AWS_DB_ENDPOINT}:5432/${AWS_DB_NAME}?sslmode=require"
 else
   DATABASE_URL=""
 fi
 SCRAPER_ROLE_ARN="${SCRAPER_ROLE_ARN:-}"
+SECRET_ARN="${SECRET_ARN:-}"
 
 # Build (layer with asyncpg requires Docker)
 echo "Building..."
@@ -58,6 +59,7 @@ else
   PARAMS="$PARAMS DatabaseUrl=$DATABASE_URL"
 fi
 [ -n "$SCRAPER_ROLE_ARN" ] && PARAMS="$PARAMS ScraperRoleArn=$SCRAPER_ROLE_ARN"
+[ -n "$SECRET_ARN" ] && PARAMS="$PARAMS SecretArn=$SECRET_ARN"
 
 echo "Deploying (stack: aligno-normalize)..."
 sam deploy \

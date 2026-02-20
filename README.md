@@ -23,14 +23,17 @@ The frontend is a **Vite + React** SPA with a dark "Terminal Nights" aesthetic.
 
 ### Running locally
 
-> Node.js is required. If not installed: [nodejs.org/en/download](https://nodejs.org/en/download)
+> Node.js and Python 3 are required.
+
+**One command (backend + frontend):**
 
 ```bash
-cd frontend-react
 npm install
 npm run dev
-# → http://localhost:5173
+# → Frontend: http://localhost:5173  (API /api/* proxied to backend :8000)
 ```
+
+**Or separately:** `npm run dev:frontend` (Vite only), `npm run dev:backend` (FastAPI only).
 
 The Vite dev server proxies all `/api` requests to the FastAPI backend on `:8000`.
 
@@ -57,8 +60,11 @@ The Vite dev server proxies all `/api` requests to the FastAPI backend on `:8000
 
 ## ⚙️ Backend (FastAPI)
 
+Backend runs on port 8000. Use `npm run dev` from project root to start it together with the frontend, or:
+
 ```bash
-python3 -m uvicorn backend.main:app --reload --port 8000
+npm run dev:backend
+# or: python3 -m uvicorn backend.main:app --reload --port 8000
 ```
 
 **Endpoints used by the frontend:**
