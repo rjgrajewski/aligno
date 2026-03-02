@@ -80,7 +80,7 @@ I stepped into the role of a supervisor and began deliberately steering Cursor t
 
 
 
-Designing the matching experience
+Designing the experience
 
 The most important part of the application is the philosophy of matching job offers to a candidate’s skill profile — and I needed a solution that would feel genuinely user‑friendly.
 
