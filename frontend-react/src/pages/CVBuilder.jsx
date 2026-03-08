@@ -10,6 +10,16 @@ const TYPING_SKILLS = [
     'Java', 'C#', 'SQL', 'Rust', 'Vue.js'
 ];
 
+function useIsMobile() {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+    return isMobile;
+}
+
 function useTypingPlaceholder() {
     const [text, setText] = useState('');
     useEffect(() => {
@@ -274,6 +284,8 @@ function SkillMapSkeleton({ width, height }) {
 }
 
 export default function CVBuilder() {
+    const isMobile = useIsMobile();
+    const [interactionMode, setInteractionMode] = useState('select');
     const [selected, setSelected] = useState(new Set());
     const [highlighted, setHighlighted] = useState(new Set());
     const { skills, loading } = useSkills([...selected]);
@@ -392,11 +404,11 @@ export default function CVBuilder() {
                 }
             });
 
-            return [...exactMatches, ...startsWithMatches, ...containsMatches].slice(0, 50);
+            return [...exactMatches, ...startsWithMatches, ...containsMatches].slice(0, isMobile ? 30 : 50);
         }
 
-        return availableSkills.slice(0, 50);
-    }, [sortedSkills, search, selected, anti]);
+        return availableSkills.slice(0, isMobile ? 30 : 50);
+    }, [sortedSkills, search, selected, anti, isMobile]);
 
     const calculateSize = useCallback((skill, mFreq) => {
         const freq = skill.frequency || 0;
@@ -405,12 +417,15 @@ export default function CVBuilder() {
 
         // Base minSize on the longest word to ensure it fits horizontally, 
         // with a small buffer for the string length to account for wrapping.
-        const minSize = Math.max(80, (longestWordLen * 11) + 20 + (skill.name.length * 0.5));
-        const maxSize = Math.max(160, minSize + 80);
+        const baseMin = isMobile ? 55 : 80;
+        const fontMultiplier = isMobile ? 8 : 11;
+
+        const minSize = Math.max(baseMin, (longestWordLen * fontMultiplier) + 20 + (skill.name.length * 0.5));
+        const maxSize = Math.max(isMobile ? 120 : 160, minSize + (isMobile ? 50 : 80));
 
         const ratio = mFreq > 0 ? freq / mFreq : 0;
         return minSize + ((maxSize - minSize) * Math.pow(ratio, 0.6));
-    }, []);
+    }, [isMobile]);
 
     useEffect(() => {
         if (loading || filtered.length === 0 || dimensions.width === 0) {
@@ -555,7 +570,7 @@ export default function CVBuilder() {
     }, []);
 
     return (
-        <div style={styles.wrapper}>
+        <div style={{ ...styles.wrapper, flexDirection: isMobile ? 'column' : 'row' }}>
             {/* Flying ghosts overlay — fixed, above everything */}
             <AnimatePresence>
                 {flyingGhosts.map(ghost => (
@@ -568,14 +583,24 @@ export default function CVBuilder() {
             </AnimatePresence>
 
             {/* LEFT SIDEBAR */}
-            <aside ref={sidebarRef} style={styles.sidebar}>
-                <h3 style={styles.sidebarTitle}>Your Profile</h3>
+            <aside ref={sidebarRef} style={{
+                ...styles.sidebar,
+                order: isMobile ? 2 : 1,
+                width: isMobile ? '100%' : '280px',
+                height: isMobile ? 'auto' : 'calc(100vh - 64px)',
+                position: isMobile ? 'relative' : 'sticky',
+                top: isMobile ? 0 : '64px',
+                borderRight: isMobile ? 'none' : '1px solid var(--border)',
+                borderTop: isMobile ? '1px solid var(--border)' : 'none',
+                gap: isMobile ? '1.5rem' : '0'
+            }}>
+                <h3 style={{ ...styles.sidebarTitle, display: isMobile ? 'none' : 'block' }}>Your Profile</h3>
 
                 <div style={styles.sidebarSection}>
                     <div style={styles.sidebarLabel}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             ✅ Selected Skills <span style={styles.count}>{selected.size}</span>
-                            {highlighted.size > 0 && (
+                            {highlighted.size > 0 && !isMobile && (
                                 <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.75rem' }}>
                                     · <span style={{ color: 'var(--accent-cyan)' }}>{highlighted.size} on CV</span>
                                 </span>
@@ -680,28 +705,57 @@ export default function CVBuilder() {
             </aside>
 
             {/* MAIN AREA */}
-            <div style={styles.main}>
-                <div style={styles.mainHeader}>
+            <div style={{ ...styles.main, order: isMobile ? 1 : 2, padding: isMobile ? '1rem' : '1.5rem 2rem' }}>
+                <div style={{ ...styles.mainHeader, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start' }}>
                     <div>
                         <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.25rem' }}>Skill Map</h1>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                             <span style={{ color: 'var(--accent-cyan)' }}>Click</span> to select ·{' '}
-                            <span style={{ color: 'var(--accent-red)' }}>Shift+Click</span> or right-click to block
+                            <span style={{ color: 'var(--accent-red)' }}>{isMobile ? 'Block mode' : 'Shift+Click'}</span> to block
                         </p>
                     </div>
-                    <div style={styles.searchWrapper}>
-                        <span style={styles.searchPrompt}>❯</span>
-                        <input
-                            className="form-input"
-                            placeholder={search ? "" : placeholderText}
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            style={styles.searchInput}
-                        />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: isMobile ? '100%' : 'auto' }}>
+                        <div style={{ ...styles.searchWrapper, width: '100%' }}>
+                            <span style={styles.searchPrompt}>❯</span>
+                            <input
+                                className="form-input"
+                                placeholder={search ? "" : placeholderText}
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                style={{ ...styles.searchInput, width: '100%' }}
+                            />
+                        </div>
+                        {isMobile && (
+                            <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: '4px', gap: '4px' }}>
+                                <button
+                                    onClick={() => setInteractionMode('select')}
+                                    style={{
+                                        flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: 'none',
+                                        background: interactionMode === 'select' ? 'var(--accent-cyan)' : 'transparent',
+                                        color: interactionMode === 'select' ? '#000' : 'var(--text-secondary)',
+                                        fontWeight: 600, transition: '0.2s', fontSize: '0.85rem'
+                                    }}
+                                >
+                                    ✅ Select
+                                </button>
+                                <button
+                                    onClick={() => setInteractionMode('block')}
+                                    style={{
+                                        flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: 'none',
+                                        background: interactionMode === 'block' ? 'var(--accent-red)' : 'transparent',
+                                        color: interactionMode === 'block' ? '#fff' : 'var(--text-secondary)',
+                                        fontWeight: 600, transition: '0.2s', fontSize: '0.85rem'
+                                    }}
+                                >
+                                    🚫 Block
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <div style={styles.bubbleCloudContainer} ref={containerRef}>
+                <div style={{ ...styles.bubbleCloudContainer, minHeight: isMobile ? '400px' : '600px' }} ref={containerRef}>
                     {loading ? (
                         <SkillMapSkeleton width={dimensions.width} height={dimensions.height} />
                     ) : (
@@ -715,7 +769,9 @@ export default function CVBuilder() {
                                     isSelected={selected.has(node.name)}
                                     isAnti={anti.has(node.name)}
                                     onLeft={(e) => {
-                                        if (e?.shiftKey) {
+                                        if (isMobile && interactionMode === 'block') {
+                                            toggleAnti(node.name);
+                                        } else if (e?.shiftKey) {
                                             toggleAnti(node.name);
                                         } else {
                                             toggleSkill(node.name);
