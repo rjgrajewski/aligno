@@ -44,3 +44,4 @@ tests/
 output.log
 clear_skills.py
 check_tech_stack.py
+.env.old

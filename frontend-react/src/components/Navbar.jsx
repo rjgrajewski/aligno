@@ -1,9 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { auth } from '../services/api.js';
+import './Navbar.css';
 
 export default function Navbar() {
     const [user, setUser] = useState(auth.getUser());
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -16,7 +18,16 @@ export default function Navbar() {
     const handleLogout = () => {
         auth.logout();
         setUser(null);
+        setIsMobileMenuOpen(false);
         navigate('/');
+    };
+
+    const toggleMobileMenu = () => {
+        setIsMobileMenuOpen(!isMobileMenuOpen);
+    };
+
+    const closeMobileMenu = () => {
+        setIsMobileMenuOpen(false);
     };
 
     const initials = user?.name
@@ -26,42 +37,47 @@ export default function Navbar() {
             : '?';
 
     return (
-        <header style={styles.header}>
-            <div className="container" style={styles.inner}>
+        <header className="navbar-header">
+            <div className="container navbar-inner">
                 {/* Logo */}
-                <NavLink to="/" style={styles.logo}>
-                    flowjob<span style={styles.logoAccent}>.it</span>
+                <NavLink to="/" className="navbar-logo" onClick={closeMobileMenu}>
+                    flowjob<span className="navbar-logo-accent">.it</span>
                 </NavLink>
 
-                {/* Nav Links (authenticated users only) */}
-                <nav style={styles.nav}>
+                {/* Desktop Nav Links */}
+                <nav className="navbar-nav">
                     {user && (
                         <>
-                            <NavLink to="/story" style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.linkActive : {}) })}>
+                            <NavLink to="/story" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
                                 Story
                             </NavLink>
-                            <NavLink to="/jobs" style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.linkActive : {}) })}>
+                            <NavLink to="/jobs" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
                                 Offers
                             </NavLink>
-                            <NavLink to="/my-skills" style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.linkActive : {}) })}>
+                            <NavLink to="/my-skills" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
                                 My Skills
                             </NavLink>
-                            <NavLink to="/my-cv" style={({ isActive }) => ({ ...styles.link, ...(isActive ? styles.linkActive : {}) })}>
+                            <NavLink to="/my-cv" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
                                 My CV
                             </NavLink>
                         </>
                     )}
                 </nav>
 
-                {/* Right side */}
-                <div style={styles.right}>
+                {/* Right side Desktop & Mobile Toggle */}
+                <div className="navbar-right">
                     {user ? (
-                        <div style={styles.avatarGroup}>
-                            <div style={styles.avatar}>{initials}</div>
-                            <button onClick={handleLogout} style={styles.logoutBtn}>
-                                Logout
+                        <>
+                            <div className="navbar-avatar-group">
+                                <div className="navbar-avatar">{initials}</div>
+                                <button onClick={handleLogout} className="navbar-logout-btn">
+                                    Logout
+                                </button>
+                            </div>
+                            <button className="navbar-toggle-btn" onClick={toggleMobileMenu}>
+                                {isMobileMenuOpen ? '✕' : '☰'}
                             </button>
-                        </div>
+                        </>
                     ) : (
                         <NavLink to="/get-started?tab=login" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '0.5rem 1.2rem' }}>
                             Get Started →
@@ -69,87 +85,32 @@ export default function Navbar() {
                     )}
                 </div>
             </div>
+
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && user && (
+                <div className="navbar-mobile-menu">
+                    <nav className="navbar-nav">
+                        <NavLink to="/story" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
+                            Story
+                        </NavLink>
+                        <NavLink to="/jobs" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
+                            Offers
+                        </NavLink>
+                        <NavLink to="/my-skills" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
+                            My Skills
+                        </NavLink>
+                        <NavLink to="/my-cv" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
+                            My CV
+                        </NavLink>
+                    </nav>
+                    <div className="navbar-avatar-group">
+                        <div className="navbar-avatar">{initials}</div>
+                        <button onClick={handleLogout} className="navbar-logout-btn" style={{ fontSize: '1.2rem' }}>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            )}
         </header>
     );
 }
-
-const styles = {
-    header: {
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        height: '64px',
-        background: 'rgba(13, 17, 23, 0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    inner: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '2rem',
-    },
-    logo: {
-        fontSize: '1.4rem',
-        fontWeight: 800,
-        color: 'var(--text-primary)',
-        textDecoration: 'none',
-        letterSpacing: '-0.02em',
-        flexShrink: 0,
-    },
-    logoAccent: {
-        color: 'var(--accent-cyan)',
-    },
-    nav: {
-        display: 'flex',
-        gap: '0.25rem',
-        alignItems: 'center',
-    },
-    link: {
-        color: 'var(--text-secondary)',
-        textDecoration: 'none',
-        fontSize: '0.9rem',
-        fontWeight: 500,
-        padding: '0.4rem 0.85rem',
-        borderRadius: 'var(--radius-pill)',
-        transition: 'all 0.15s',
-    },
-    linkActive: {
-        color: 'var(--accent-cyan)',
-        background: 'rgba(0, 229, 255, 0.08)',
-    },
-    right: {
-        flexShrink: 0,
-    },
-    avatarGroup: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-    },
-    avatar: {
-        width: '34px',
-        height: '34px',
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-violet))',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '0.75rem',
-        fontWeight: 700,
-        color: '#000',
-    },
-    logoutBtn: {
-        background: 'none',
-        border: 'none',
-        color: 'var(--text-secondary)',
-        cursor: 'pointer',
-        fontSize: '0.85rem',
-        fontFamily: 'inherit',
-        padding: '0.25rem 0.5rem',
-        borderRadius: 'var(--radius-sm)',
-        transition: 'color 0.15s',
-    },
-};
