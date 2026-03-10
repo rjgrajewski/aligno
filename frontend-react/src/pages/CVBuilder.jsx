@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import * as d3 from 'd3-force';
 import { api, auth } from '../services/api.js';
 import { useSkills } from '../hooks/useSkills.js';
+import SwipeSkillSelector from '../components/SwipeSkillSelector.jsx';
 
 const TYPING_SKILLS = [
     'React', 'Python', 'AWS', 'Figma', 'TypeScript',
@@ -57,231 +57,7 @@ function useTypingPlaceholder() {
     return text || '|';
 }
 
-const BUBBLE_COLORS = [
-    ['rgba(0,229,255,0.1)', 'rgba(0,229,255,0.5)'],
-    ['rgba(124,58,237,0.1)', 'rgba(124,58,237,0.5)'],
-    ['rgba(0,230,118,0.1)', 'rgba(0,230,118,0.5)'],
-    ['rgba(255,215,64,0.1)', 'rgba(255,215,64,0.5)'],
-    ['rgba(255,83,112,0.1)', 'rgba(255,83,112,0.5)'],
-    ['rgba(0,229,255,0.08)', 'rgba(0,229,255,0.4)'],
-    ['rgba(200,100,255,0.1)', 'rgba(200,100,255,0.5)'],
-    ['rgba(0,200,255,0.1)', 'rgba(0,200,255,0.45)'],
-    ['rgba(255,165,0,0.1)', 'rgba(255,165,0,0.5)'],
-    ['rgba(50,200,150,0.1)', 'rgba(50,200,150,0.5)'],
-];
 
-function SkillBubble({ skill, idx, radius, isSelected, isAnti, onLeft, onRight }) {
-    const size = radius * 2;
-    const freq = skill.frequency || 0;
-    const colorIdx = (skill.name.length + idx) % BUBBLE_COLORS.length;
-    const [bg, borderCol] = BUBBLE_COLORS[colorIdx];
-
-    const domRef = useRef(null);
-
-    useEffect(() => {
-        skill.domRef = domRef.current;
-    }, [skill]);
-
-    let bubbleBg = bg;
-    let bubbleBorder = 'transparent';
-    let bubbleShadow = 'none';
-    let textColor = 'var(--text-secondary)';
-
-    if (isSelected) {
-        bubbleBg = 'rgba(0,229,255,0.15)';
-        bubbleBorder = 'var(--accent-cyan)';
-        bubbleShadow = '0 0 16px rgba(0,229,255,0.4)';
-        textColor = 'var(--accent-cyan)';
-    } else if (isAnti) {
-        bubbleBg = 'rgba(255,83,112,0.15)';
-        bubbleBorder = 'var(--accent-red)';
-        bubbleShadow = '0 0 14px rgba(255,83,112,0.35)';
-        textColor = 'var(--accent-red)';
-    }
-
-    return (
-        <div
-            ref={domRef}
-            style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: size,
-                height: size,
-                transform: skill.x ? `translate(${skill.x - radius}px, ${skill.y - radius}px)` : undefined,
-                pointerEvents: 'none',
-            }}
-        >
-            <motion.div
-                title={`${skill.name} (${freq} jobs)`}
-                onClick={onLeft}
-                onContextMenu={e => { e.preventDefault(); onRight(); }}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1, boxShadow: bubbleShadow }}
-                exit={{ opacity: 0, scale: 0 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 25 }}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: '50%',
-                    background: bubbleBg,
-                    border: `1.5px solid ${bubbleBorder || borderCol}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'center',
-                    fontSize: `${Math.max(0.6, Math.min(1.1, size / 135))}rem`,
-                    fontWeight: 600,
-                    color: textColor,
-                    cursor: 'pointer',
-                    padding: '0.6rem',
-                    userSelect: 'none',
-                    pointerEvents: 'auto',
-                    transition: 'background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s',
-                }}
-            >
-                <span style={{
-                    overflowWrap: 'break-word',
-                    wordBreak: 'normal',
-                    lineHeight: 1.1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    width: '100%',
-                }}>
-                    {skill.name}
-                </span>
-            </motion.div>
-        </div>
-    );
-}
-
-// A ghost bubble that flies from its starting position to the sidebar target
-function FlyingGhost({ id, name, startX, startY, startSize, targetX, targetY, color, onDone }) {
-    return (
-        <motion.div
-            key={id}
-            initial={{
-                left: startX,
-                top: startY,
-                width: startSize,
-                height: startSize,
-                opacity: 1,
-                scale: 1,
-            }}
-            animate={{
-                left: targetX,
-                top: targetY,
-                width: 28,
-                height: 28,
-                opacity: 0,
-                scale: 0.4,
-            }}
-            transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-            onAnimationComplete={onDone}
-            style={{
-                position: 'fixed',
-                borderRadius: '50%',
-                background: color === 'cyan'
-                    ? 'rgba(0,229,255,0.35)'
-                    : 'rgba(255,83,112,0.35)',
-                border: `2px solid ${color === 'cyan' ? 'var(--accent-cyan)' : 'var(--accent-red)'}`,
-                boxShadow: color === 'cyan'
-                    ? '0 0 20px rgba(0,229,255,0.6)'
-                    : '0 0 20px rgba(255,83,112,0.6)',
-                pointerEvents: 'none',
-                zIndex: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.6rem',
-                fontWeight: 700,
-                color: color === 'cyan' ? 'var(--accent-cyan)' : 'var(--accent-red)',
-                overflow: 'hidden',
-            }}
-        />
-    );
-}
-
-function SkillMapSkeleton({ width, height }) {
-    const simRef = useRef(null);
-    const containerRef = useRef(null);
-
-    useEffect(() => {
-        if (!width || !height || !containerRef.current) return;
-
-        const domNodes = Array.from(containerRef.current.children);
-
-        const fakeNodes = Array.from({ length: 24 }).map((_, i) => {
-            const size = 80 + (i * 23) % 80;
-            return {
-                id: i,
-                radius: size / 2,
-                x: width / 2 + (Math.random() - 0.5) * (width * 0.5),
-                y: height / 2 + (Math.random() - 0.5) * (height * 0.5),
-                vx: (Math.random() - 0.5) * 8,
-                vy: (Math.random() - 0.5) * 8,
-                domRef: domNodes[i],
-            };
-        });
-
-        simRef.current = d3.forceSimulation(fakeNodes)
-            .alphaDecay(0.01)
-            .velocityDecay(0.2)
-            .force("collide", d3.forceCollide().radius(d => d.radius + 3).iterations(3))
-            .force("charge", d3.forceManyBody().strength(-15).distanceMax(150))
-            .force("x", d3.forceX(width / 2).strength(0.03))
-            .force("y", d3.forceY(height / 2).strength(0.03))
-            .force("bounds", () => {
-                const padding = 5;
-                for (let node of fakeNodes) {
-                    const r = node.radius + padding;
-                    if (node.x < r) { node.x = r; node.vx += (r - node.x) * 0.15; }
-                    if (node.x > width - r) { node.x = width - r; node.vx += (width - r - node.x) * 0.15; }
-                    if (node.y < r) { node.y = r; node.vy += (r - node.y) * 0.15; }
-                    if (node.y > height - r) { node.y = height - r; node.vy += (height - r - node.y) * 0.15; }
-                }
-            })
-            .on("tick", () => {
-                for (let i = 0; i < fakeNodes.length; i++) {
-                    const node = fakeNodes[i];
-                    if (node.domRef) {
-                        node.domRef.style.transform = `translate(${node.x - node.radius}px, ${node.y - node.radius}px)`;
-                    }
-                }
-            });
-
-        return () => {
-            if (simRef.current) simRef.current.stop();
-        };
-    }, [width, height]);
-
-    if (!width || !height) return null;
-
-    return (
-        <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-            {Array.from({ length: 24 }).map((_, i) => {
-                const size = 80 + (i * 23) % 80;
-                return (
-                    <div key={i} className="pulse" style={{
-                        position: 'absolute',
-                        top: 0, left: 0,
-                        width: size,
-                        height: size,
-                        borderRadius: '50%',
-                        background: 'var(--bg-elevated)',
-                        animation: 'pulse 1.5s ease-in-out infinite',
-                        transform: `translate(${width / 2 - size / 2}px, ${height / 2 - size / 2}px)`,
-                    }} />
-                )
-            })}
-        </div>
-    );
-}
 
 export default function CVBuilder() {
     const isMobile = useIsMobile();
@@ -301,21 +77,11 @@ export default function CVBuilder() {
     const saveTimeout = useRef(null);
     const initialLoadDone = useRef(false);
 
-    // Flying ghosts state: array of { id, name, startX, startY, startSize, targetX, targetY, color }
-    const [flyingGhosts, setFlyingGhosts] = useState([]);
-    const ghostCounter = useRef(0);
-
     const placeholderText = useTypingPlaceholder();
     const containerRef = useRef(null);
     const sidebarRef = useRef(null);
     const selectedTagsRef = useRef(null);
     const antiTagsRef = useRef(null);
-
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const [nodes, setNodes] = useState([]);
-
-    const simRef = useRef(null);
-    const nodeCache = useRef(new Map());
 
     useEffect(() => {
         let mounted = true;
@@ -357,21 +123,7 @@ export default function CVBuilder() {
         }, 1000);
     }, [selected, anti, highlighted]);
 
-    useEffect(() => {
-        if (!containerRef.current) return;
-        const observer = new ResizeObserver(entries => {
-            for (let entry of entries) {
-                if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-                    setDimensions({
-                        width: entry.contentRect.width,
-                        height: Math.max(entry.contentRect.height, 500)
-                    });
-                }
-            }
-        });
-        observer.observe(containerRef.current);
-        return () => observer.disconnect();
-    }, [loading]);
+
 
     const maxFreq = useMemo(() => Math.max(...skills.map(s => s.frequency || 0), 1), [skills]);
 
@@ -410,107 +162,7 @@ export default function CVBuilder() {
         return availableSkills.slice(0, isMobile ? 30 : 50);
     }, [sortedSkills, search, selected, anti, isMobile]);
 
-    const calculateSize = useCallback((skill, mFreq) => {
-        const freq = skill.frequency || 0;
-        const words = skill.name.split(/\s+/);
-        const longestWordLen = Math.max(...words.map(w => w.length));
 
-        // Base minSize on the longest word to ensure it fits horizontally, 
-        // with a small buffer for the string length to account for wrapping.
-        const baseMin = isMobile ? 55 : 80;
-        const fontMultiplier = isMobile ? 8 : 11;
-
-        const minSize = Math.max(baseMin, (longestWordLen * fontMultiplier) + 20 + (skill.name.length * 0.5));
-        const maxSize = Math.max(isMobile ? 120 : 160, minSize + (isMobile ? 50 : 80));
-
-        const ratio = mFreq > 0 ? freq / mFreq : 0;
-        return minSize + ((maxSize - minSize) * Math.pow(ratio, 0.6));
-    }, [isMobile]);
-
-    useEffect(() => {
-        if (loading || filtered.length === 0 || dimensions.width === 0) {
-            if (simRef.current) simRef.current.stop();
-            setNodes([]);
-            return;
-        }
-
-        const width = dimensions.width;
-        const height = dimensions.height;
-
-        const newNodes = filtered.map(skill => {
-            const radius = calculateSize(skill, maxFreq) / 2;
-            const existing = nodeCache.current.get(skill.name);
-            return {
-                ...skill,
-                radius,
-                x: existing?.x ?? (Math.random() * width),
-                y: existing?.y ?? (Math.random() * height),
-                vx: existing?.vx ?? ((Math.random() - 0.5) * 8),
-                vy: existing?.vy ?? ((Math.random() - 0.5) * 8),
-                domRef: existing?.domRef || null
-            };
-        });
-
-        setNodes(newNodes);
-
-        if (simRef.current) simRef.current.stop();
-
-        simRef.current = d3.forceSimulation(newNodes)
-            .alphaDecay(0.01)
-            .velocityDecay(0.2)
-            .force("collide", d3.forceCollide().radius(d => d.radius + 3).iterations(3))
-            .force("charge", d3.forceManyBody().strength(-15).distanceMax(150))
-            .force("x", d3.forceX(width / 2).strength(0.03))
-            .force("y", d3.forceY(height / 2).strength(0.03))
-            .force("bounds", () => {
-                const padding = 5;
-                for (let node of newNodes) {
-                    const r = node.radius + padding;
-                    if (node.x < r) { node.x = r; node.vx += (r - node.x) * 0.15; }
-                    if (node.x > width - r) { node.x = width - r; node.vx += (width - r - node.x) * 0.15; }
-                    if (node.y < r) { node.y = r; node.vy += (r - node.y) * 0.15; }
-                    if (node.y > height - r) { node.y = height - r; node.vy += (height - r - node.y) * 0.15; }
-                }
-            })
-            .on("tick", () => {
-                for (let i = 0; i < newNodes.length; i++) {
-                    const node = newNodes[i];
-                    nodeCache.current.set(node.name, node);
-                    if (node.domRef) {
-                        node.domRef.style.transform = `translate(${node.x - node.radius}px, ${node.y - node.radius}px)`;
-                    }
-                }
-            });
-
-        return () => {
-            if (simRef.current) simRef.current.stop();
-        };
-    }, [filtered, maxFreq, dimensions.width, dimensions.height, calculateSize, loading]);
-
-    // Helper: compute ghost params for a newly-clicked bubble
-    const launchGhost = useCallback((skillName, color) => {
-        // Find DOM ref for the skill node
-        const cachedNode = nodeCache.current.get(skillName);
-        const skillDomEl = cachedNode?.domRef;
-        if (!skillDomEl) return;
-
-        const bubbleRect = skillDomEl.getBoundingClientRect();
-        // Get target: the respective tags container in the sidebar
-        const targetRef = color === 'cyan' ? selectedTagsRef.current : antiTagsRef.current;
-        const targetRect = targetRef
-            ? targetRef.getBoundingClientRect()
-            : sidebarRef.current?.getBoundingClientRect();
-
-        const startX = bubbleRect.left + bubbleRect.width / 2 - bubbleRect.width / 2;
-        const startY = bubbleRect.top + bubbleRect.height / 2 - bubbleRect.height / 2;
-        const startSize = bubbleRect.width;
-
-        const targetX = targetRect ? targetRect.left + 4 : 20;
-        const targetY = targetRect ? targetRect.top + 4 : 100;
-
-        const id = ++ghostCounter.current;
-        setFlyingGhosts(prev => [...prev, { id, name: skillName, startX, startY, startSize, targetX, targetY, color }]);
-    }, []);
 
     const toggleHighlighted = useCallback((name) => {
         setHighlighted(h => {
@@ -521,11 +173,7 @@ export default function CVBuilder() {
     }, []);
 
     const toggleSkill = useCallback((name) => {
-        const curSelected = selectedRef.current;
         const curAnti = antiRef.current;
-        if (!curSelected.has(name)) {
-            launchGhost(name, 'cyan');
-        }
         if (curAnti.has(name)) {
             setAnti(a => { const n = new Set(a); n.delete(name); return n; });
         }
@@ -534,16 +182,10 @@ export default function CVBuilder() {
             n.has(name) ? n.delete(name) : n.add(name);
             return n;
         });
-    }, [launchGhost]);
+    }, []);
 
     const toggleAnti = useCallback((name) => {
-        const curAnti = antiRef.current;
         const curSelected = selectedRef.current;
-        // Only launch ghost if transitioning from not-anti -> anti
-        if (!curAnti.has(name)) {
-            launchGhost(name, 'red');
-        }
-        // Remove from selected
         if (curSelected.has(name)) {
             setSelected(s => { const n = new Set(s); n.delete(name); return n; });
         }
@@ -552,7 +194,7 @@ export default function CVBuilder() {
             n.has(name) ? n.delete(name) : n.add(name);
             return n;
         });
-    }, [launchGhost]);
+    }, []);
 
     // Keep highlighted a subset of selected (e.g. when user deselects a skill)
     useEffect(() => {
@@ -565,22 +207,8 @@ export default function CVBuilder() {
         });
     }, [selected]);
 
-    const removeGhost = useCallback((id) => {
-        setFlyingGhosts(prev => prev.filter(g => g.id !== id));
-    }, []);
-
     return (
-        <div style={{ ...styles.wrapper, flexDirection: isMobile ? 'column' : 'row' }}>
-            {/* Flying ghosts overlay — fixed, above everything */}
-            <AnimatePresence>
-                {flyingGhosts.map(ghost => (
-                    <FlyingGhost
-                        key={ghost.id}
-                        {...ghost}
-                        onDone={() => removeGhost(ghost.id)}
-                    />
-                ))}
-            </AnimatePresence>
+        <div style={{ ...styles.wrapper, flexDirection: isMobile ? 'column' : 'row', overflowX: 'hidden' }}>
 
             {/* LEFT SIDEBAR */}
             <aside ref={sidebarRef} style={{
@@ -755,37 +383,27 @@ export default function CVBuilder() {
                     </div>
                 </div>
 
-                <div style={{ ...styles.bubbleCloudContainer, minHeight: isMobile ? '400px' : '600px' }} ref={containerRef}>
+                <div style={{ ...styles.bubbleCloudContainer, minHeight: isMobile ? '450px' : '640px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} ref={containerRef}>
                     {loading ? (
-                        <SkillMapSkeleton width={dimensions.width} height={dimensions.height} />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                            <div className="pulse" style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        </div>
                     ) : (
-                        <AnimatePresence>
-                            {nodes.map((node, i) => (
-                                <SkillBubble
-                                    key={node.name}
-                                    skill={node}
-                                    idx={i}
-                                    radius={node.radius}
-                                    isSelected={selected.has(node.name)}
-                                    isAnti={anti.has(node.name)}
-                                    onLeft={(e) => {
-                                        if (isMobile && interactionMode === 'block') {
-                                            toggleAnti(node.name);
-                                        } else if (e?.shiftKey) {
-                                            toggleAnti(node.name);
-                                        } else {
-                                            toggleSkill(node.name);
-                                        }
-                                    }}
-                                    onRight={() => toggleAnti(node.name)}
-                                />
-                            ))}
-                            {nodes.length === 0 && (
-                                <p style={{ color: 'var(--text-secondary)', padding: '2rem', position: 'absolute' }}>
-                                    {search ? `No skills found for "${search}"` : 'All skills selected!'}
-                                </p>
-                            )}
-                        </AnimatePresence>
+                        <SwipeSkillSelector
+                            skills={filtered}
+                            search={search}
+                            onSwipeRight={toggleSkill}
+                            onSwipeLeft={(name) => { /* Skipped handled internally */ }}
+                            onSwipeUp={(name) => {
+                                toggleSkill(name);
+                                setHighlighted(h => {
+                                    const next = new Set(h);
+                                    next.add(name);
+                                    return next;
+                                });
+                            }}
+                            onSwipeDown={toggleAnti}
+                        />
                     )}
                 </div>
             </div>

@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api.js';
 
+const MOCK_SKILLS = [
+  { name: 'React', frequency: 154 },
+  { name: 'Python', frequency: 120 },
+  { name: 'JavaScript', frequency: 110 },
+  { name: 'TypeScript', frequency: 95 },
+  { name: 'Node.js', frequency: 80 },
+  { name: 'Framer Motion', frequency: 75 },
+  { name: 'CSS', frequency: 150 },
+  { name: 'HTML', frequency: 140 },
+  { name: 'SQL', frequency: 100 },
+  { name: 'AWS', frequency: 90 },
+];
+
 export function useSkills(selected = []) {
     const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,7 +29,10 @@ export function useSkills(selected = []) {
                     setSkills(data);
                     setLoading(false);
                 })
-                .catch(() => setLoading(false));
+                .catch(() => {
+                    setSkills(MOCK_SKILLS.filter(s => !selectedStr.split(',').includes(s.name)));
+                    setLoading(false);
+                });
         }, 150);
 
         return () => clearTimeout(timeoutId);

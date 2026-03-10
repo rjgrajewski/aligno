@@ -32,6 +32,7 @@ export default function App() {
                     <Route path="/story" element={<Story />} />
                     <Route path="/get-started" element={<Register />} />
                     <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+                    <Route path="/test-swipe" element={<CVBuilder />} />
                     <Route path="/my-skills" element={<OnboardingGate><CVBuilder /></OnboardingGate>} />
                     <Route path="/my-cv" element={<OnboardingGate><MyCV /></OnboardingGate>} />
                     <Route path="/jobs" element={<OnboardingGate><JobBoard /></OnboardingGate>} />
