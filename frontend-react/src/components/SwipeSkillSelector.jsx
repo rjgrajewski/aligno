@@ -143,10 +143,7 @@ function CategoryBadge({ color, icon, count, label, onClick }) {
 // --- Skills Modal ---
 function SkillsModal({ title, color, icon, skills, onRemove, onClose }) {
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+        <div
             onClick={onClose}
             style={{
                 position: 'fixed', inset: 0, zIndex: 1000,
@@ -217,7 +214,7 @@ function SkillsModal({ title, color, icon, skills, onRemove, onClose }) {
                     )}
                 </div>
             </motion.div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -316,14 +313,12 @@ export default function SwipeSkillSelector({
                         <CategoryBadge color="#00e676" icon="★" count={mustHaveCount} label="Must Have" onClick={() => setModalCategory('mustHave')} />
                     </div>
                 )}
-                <AnimatePresence>
-                    {modalCategory && categories[modalCategory] && (
-                        <SkillsModal
-                            {...categories[modalCategory]}
-                            onClose={() => setModalCategory(null)}
-                        />
-                    )}
-                </AnimatePresence>
+                {modalCategory && categories[modalCategory] && (
+                    <SkillsModal
+                        {...categories[modalCategory]}
+                        onClose={() => setModalCategory(null)}
+                    />
+                )}
             </div>
         );
     }
@@ -378,14 +373,12 @@ export default function SwipeSkillSelector({
             )}
 
             {/* Modal */}
-            <AnimatePresence>
-                {modalCategory && categories[modalCategory] && (
-                    <SkillsModal
-                        {...categories[modalCategory]}
-                        onClose={() => setModalCategory(null)}
-                    />
-                )}
-            </AnimatePresence>
+            {modalCategory && categories[modalCategory] && (
+                <SkillsModal
+                    {...categories[modalCategory]}
+                    onClose={() => setModalCategory(null)}
+                />
+            )}
         </div>
     );
 }
