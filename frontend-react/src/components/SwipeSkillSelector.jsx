@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
+import SkillSearch, { useSkillSearchFilter } from './SkillSearch.jsx';
 
 const SwipeCard = ({ skill, index, onSwipe, frontCard, exitDirection }) => {
     const x = useMotionValue(0);
@@ -249,19 +250,21 @@ function SkillsModal({ title, color, icon, skills, onRemove, onClearAll, onClose
 }
 
 export default function SwipeSkillSelector({
-    skills, onSwipeRight, onSwipeLeft, onSwipeDown, onSwipeUp, search,
+    skills, onSwipeRight, onSwipeLeft, onSwipeDown, onSwipeUp,
     isMobile, selected, anti, highlighted, skipped,
     onReSwipe, onClearCategory,
 }) {
     const [localSkipped, setLocalSkipped] = useState(new Set());
     const [exitDirections, setExitDirections] = useState({});
     const [modalCategory, setModalCategory] = useState(null);
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         if (search) setLocalSkipped(new Set());
     }, [search]);
 
-    const visibleSkills = skills.filter(s => !localSkipped.has(s.name)).slice(0, 4);
+    const filteredSkills = useSkillSearchFilter(skills, search);
+    const visibleSkills = filteredSkills.filter(s => !localSkipped.has(s.name)).slice(0, 4);
 
     const handleSwipe = useCallback((direction, skillName) => {
         setExitDirections(prev => ({ ...prev, [skillName]: direction }));
@@ -337,7 +340,10 @@ export default function SwipeSkillSelector({
 
     if (!skills || skills.length === 0 || visibleSkills.length === 0) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', gap: '1.5rem', width: '100%', padding: isMobile ? '2rem 1rem 1rem 1rem' : '1rem' }}>
+                <div style={{ width: '100%', maxWidth: '320px', marginBottom: '1rem', zIndex: 30 }}>
+                    <SkillSearch search={search} setSearch={setSearch} />
+                </div>
                 <span>{search ? `No skills found for "${search}"` : 'All caught up!'}</span>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <CategoryBadge color="#888" icon="✕" count={Math.max(0, skipCount)} label="Skip" onClick={() => setModalCategory('skip')} />
@@ -357,6 +363,10 @@ export default function SwipeSkillSelector({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', overflow: 'hidden', padding: isMobile ? '2rem 1rem 1rem 1rem' : '1rem' }}>
+            <div style={{ width: '100%', maxWidth: '320px', marginBottom: '2rem', zIndex: 30 }}>
+                <SkillSearch search={search} setSearch={setSearch} />
+            </div>
+
             <div style={{ position: 'relative', width: '320px', height: isMobile ? '360px' : '420px', maxWidth: '100%', marginBottom: '3rem' }}>
                 <AnimatePresence>
                     {visibleSkills.map((skill, i) => (
