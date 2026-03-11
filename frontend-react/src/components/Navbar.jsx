@@ -49,16 +49,16 @@ export default function Navbar() {
                     {user && (
                         <>
                             <NavLink to="/story" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
-                                Story
+                                About
                             </NavLink>
                             <NavLink to="/jobs" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
-                                Offers
+                                Jobs
                             </NavLink>
                             <NavLink to="/my-skills" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
-                                My Skills
+                                Skills
                             </NavLink>
                             <NavLink to="/my-cv" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
-                                My CV
+                                CV Builder
                             </NavLink>
                         </>
                     )}
@@ -91,16 +91,16 @@ export default function Navbar() {
                 <div className="navbar-mobile-menu">
                     <nav className="navbar-nav">
                         <NavLink to="/story" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
-                            Story
+                            About
                         </NavLink>
                         <NavLink to="/jobs" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
-                            Offers
+                            Jobs
                         </NavLink>
                         <NavLink to="/my-skills" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
-                            My Skills
+                            Skills
                         </NavLink>
                         <NavLink to="/my-cv" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
-                            My CV
+                            CV Builder
                         </NavLink>
                     </nav>
                     <div className="navbar-avatar-group">
