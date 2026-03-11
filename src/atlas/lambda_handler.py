@@ -17,7 +17,7 @@ def handler(event=None, context=None):
     """Lambda handler. Run normalization once (no --clear)."""
     stage = (event or {}).get("stage", "all")
     clear_first = (event or {}).get("clear_first", False)
-    if not os.environ.get("DATABASE_URL") and not os.environ.get("AWS_DB_ENDPOINT"):
-        raise ValueError("Set DATABASE_URL or AWS_DB_* env vars for Lambda")
+    if not any(os.environ.get(k) for k in ["DATABASE_URL", "AWS_DB_ENDPOINT", "SECRET_ARN"]):
+        raise ValueError("Set DATABASE_URL, AWS_DB_*, or SECRET_ARN env var for Lambda")
     asyncio.run(run_normalization_process(stage=stage, clear_first=clear_first))
     return {"statusCode": 200, "body": "Normalization completed"}

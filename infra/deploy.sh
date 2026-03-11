@@ -25,8 +25,8 @@ source .env
 set +a
 
 # Export credentials for AWS CLI / SAM (from .env; fallback to AWS_BEDROCK_*)
-export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-$AWS_BEDROCK_ACCESS_KEY}"
-export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-$AWS_BEDROCK_SECRET_ACCESS_KEY}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-${AWS_BEDROCK_ACCESS_KEY:-$AWS_ACCESS_KEY}}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-${AWS_BEDROCK_SECRET_ACCESS_KEY:-$AWS_SECRET_ACCESS_KEY}}"
 export AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-}"
 export AWS_REGION="${AWS_REGION:-eu-central-1}"
 
@@ -51,22 +51,23 @@ SECRET_ARN="${SECRET_ARN:-}"
 echo "Building..."
 sam build -t infra/template.yaml --use-container
 
-# Deploy parameters (we do not pass empty DatabaseUrl – template has default "")
-PARAMS="AwsRegion=$AWS_REGION"
+# Deploy parameters (using bash array to preserve empty strings)
+PARAMS=("AwsRegion=$AWS_REGION")
 if [ -z "$DATABASE_URL" ]; then
-  echo "Note: DATABASE_URL is not set in .env – after deploy set it in the Lambda configuration (env vars)."
+  echo "Note: DATABASE_URL is explicitly cleared so it relies on SECRET_ARN."
+  PARAMS+=("DatabaseUrl=\"\"")
 else
-  PARAMS="$PARAMS DatabaseUrl=$DATABASE_URL"
+  PARAMS+=("DatabaseUrl=$DATABASE_URL")
 fi
-[ -n "$SCRAPER_ROLE_ARN" ] && PARAMS="$PARAMS ScraperRoleArn=$SCRAPER_ROLE_ARN"
-[ -n "$SECRET_ARN" ] && PARAMS="$PARAMS SecretArn=$SECRET_ARN"
+[ -n "$SCRAPER_ROLE_ARN" ] && PARAMS+=("ScraperRoleArn=$SCRAPER_ROLE_ARN")
+[ -n "$SECRET_ARN" ] && PARAMS+=("SecretArn=$SECRET_ARN")
 
 echo "Deploying (stack: aligno-normalize)..."
 sam deploy \
   --template-file .aws-sam/build/template.yaml \
   --stack-name aligno-normalize \
   --capabilities CAPABILITY_IAM \
-  --parameter-overrides $PARAMS \
+  --parameter-overrides "${PARAMS[@]}" \
   --region "$AWS_REGION" \
   --resolve-s3
 

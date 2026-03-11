@@ -39,11 +39,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Separators used to join multiple skills in a single tech_stack entry.
-# We normalise first, then split — handles patterns like "A, B, or C" or "A/B or C".
-_OR_PATTERN = re.compile(r',?\s+(or|lub|and|i|&)\s+', re.IGNORECASE)
-_DELIM_PATTERN = re.compile(r'\s*/\s*|,\s*')
-
 # Hardcoded normalization rules applied BEFORE AI normalization.
 # Keys are matched case-insensitively; values are the canonical names to use.
 _HARDCODED_RULES: Dict[str, str] = {
@@ -70,25 +65,6 @@ _HARDCODED_RULES: Dict[str, str] = {
     "zarządzanie": "Management",
     "lamp": "LAMP",
 }
-
-def split_multi_skill_string(raw: str) -> List[str]:
-    """
-    Split a raw skill string that may contain multiple skills joined by
-    separators like '/', ', ', ' OR ', ' or ', or combinations thereof.
-
-    Examples:
-        'Python/TypeScript/C#'       -> ['Python', 'TypeScript', 'C#']
-        'Node.js OR Python OR Go'    -> ['Node.js', 'Python', 'Go']
-        'Python, TypeScript, or C#'  -> ['Python', 'TypeScript', 'C#']
-        'Python or R'                -> ['Python', 'R']
-        'Python'                     -> ['Python']
-    Returns a list of stripped, non-empty individual skill names.
-    """
-    # Step 1: normalise " or " / ", or " -> ","  (handles trailing Oxford comma too)
-    normalised = _OR_PATTERN.sub(',', raw)
-    # Step 2: split on "/" and ","
-    parts = _DELIM_PATTERN.split(normalised)
-    return [p.strip() for p in parts if p.strip()]
 
 
 def parse_tech_stack(tech_stack: str) -> List[str]:
@@ -185,12 +161,15 @@ async def extract_distinct_skills(conn: asyncpg.Connection):
 
     logging.info(f"👉 Found {len(distinct_skills)} distinct raw skills.")
     
-    # Bulk insert (ignoring duplicates).
-    # Uses the partial unique index: unique on original_skill_name WHERE canonical_skill_name IS NULL.
+    # Bulk insert — skip any original_skill_name that already exists in
+    # the skills table (whether normalised or not) to avoid creating
+    # redundant NULL rows that would trigger unnecessary AI calls.
     insert_query = """
         INSERT INTO skills (original_skill_name, category)
-        VALUES ($1, $2)
-        ON CONFLICT DO NOTHING
+        SELECT $1, $2
+        WHERE NOT EXISTS (
+            SELECT 1 FROM skills WHERE original_skill_name = $1
+        )
     """
     
     # Prepare batch
@@ -210,6 +189,7 @@ async def get_unnormalized_skills(conn: asyncpg.Connection, limit: int = 50) -> 
         SELECT original_skill_name, category
         FROM skills
         WHERE canonical_skill_name IS NULL
+        ORDER BY original_skill_name ASC
         LIMIT $1
     """
     rows = await conn.fetch(query, limit)
@@ -288,7 +268,7 @@ Input:
             "messages": [{"role": "user", "content": prompt}]
         }
         
-        model_id = "eu.anthropic.claude-sonnet-4-5-20250929-v1:0" # Default
+        model_id = "eu.anthropic.claude-sonnet-4-6" # Latest (Inference Profile)
         # Fallback list if needed, similar to before
         
         response = bedrock_client.invoke_model(modelId=model_id, body=json.dumps(request_body))
@@ -546,7 +526,7 @@ Example Output:
 
         try:
             response = bedrock_client.invoke_model(
-                modelId="anthropic.claude-3-haiku-20240307-v1:0",
+                modelId="eu.anthropic.claude-haiku-4-5-20251001-v1:0",
                 body=json.dumps({
                     "anthropic_version": "bedrock-2023-05-31",
                     "max_tokens": 2000,
@@ -707,13 +687,7 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
         if stage in ['all', 'extract']:
             # 1. Extract Distinct (only if not skipping)
             await init_tables(conn)
-            distinct_skills, skill_category_map = await extract_distinct_skills(conn)
-            await conn.executemany("""
-                INSERT INTO skills (original_skill_name, category)
-                VALUES ($1, $2)
-                ON CONFLICT (original_skill_name) WHERE canonical_skill_name IS NULL DO NOTHING
-            """, [(s, skill_category_map[s]) for s in distinct_skills])
-            logging.info("✅ Distinct skills populated in DB.")
+            await extract_distinct_skills(conn)
 
         if stage in ['all', 'normalize']:
             # 2 & 3. Normalize Loop
