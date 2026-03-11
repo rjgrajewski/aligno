@@ -20,16 +20,8 @@ export default function CVBuilder() {
     const [selected, setSelected] = useState(new Set());
     const [highlighted, setHighlighted] = useState(new Set());
     const [skipped, setSkipped] = useState(new Set());
-    const [cvLoaded, setCvLoaded] = useState(false);
-    
-    // Only capture selected skills once when CV the finishes loading
-    // to prevent the deck from constantly reshuffling on every swipe.
-    const initialSelected = useMemo(() => {
-        return cvLoaded ? [...selected] : [];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cvLoaded]);
-    
-    const { skills, loading } = useSkills(initialSelected);
+    const { skills, loading } = useSkills([...selected]);
+    const [bufferedDeck, setBufferedDeck] = useState([]);
     const [anti, setAnti] = useState(new Set());
     
     const selectedRef = useRef(new Set());
@@ -58,7 +50,6 @@ export default function CVBuilder() {
             setAnti(new Set(cv.antiSkills || []));
             setHighlighted(new Set(cv.highlightedSkills || []));
             setSkipped(new Set(cv.skippedSkills || []));
-            setCvLoaded(true);
             setTimeout(() => { if (mounted) initialLoadDone.current = true; }, 100);
         };
         load();
@@ -92,9 +83,31 @@ export default function CVBuilder() {
 
 
 
-    // Exclude already-selected, anti, and skipped skills from deck
-    const filtered = useMemo(() => {
-        return skills.filter(s => !selected.has(s.name) && !anti.has(s.name) && !skipped.has(s.name));
+    // Intelligent Collaborative Sorting Buffer:
+    // We want the background API to continually fetch optimal matching skills as the user swipes.
+    // However, we MUST protect the top N cards that the user is currently looking at
+    // from being unexpectedly swapped out while they are deciding.
+    useEffect(() => {
+        setBufferedDeck(currentDeck => {
+            // 1. Identify valid cards currently in the buffer (protect top 2)
+            const validCurrentBuffer = currentDeck
+                .filter(s => !selected.has(s.name) && !anti.has(s.name) && !skipped.has(s.name))
+                .slice(0, 2);
+            
+            // 2. Identify names of the protected cards
+            const bufferNames = new Set(validCurrentBuffer.map(s => s.name));
+            
+            // 3. Filter the new API skills to exclude already processed AND already buffered cards
+            const newFilteredSkills = skills.filter(s => 
+                !selected.has(s.name) && 
+                !anti.has(s.name) && 
+                !skipped.has(s.name) && 
+                !bufferNames.has(s.name)
+            );
+            
+            // 4. Combine safe buffer with new collaborative suggestions
+            return [...validCurrentBuffer, ...newFilteredSkills];
+        });
     }, [skills, selected, anti, skipped]);
 
 
@@ -218,7 +231,7 @@ export default function CVBuilder() {
                         </div>
                     ) : (
                         <SwipeSkillSelector
-                            skills={filtered}
+                            skills={bufferedDeck}
                             isMobile={isMobile}
                             selected={selected}
                             anti={anti}
