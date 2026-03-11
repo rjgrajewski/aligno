@@ -153,20 +153,20 @@ export default function SkillSwipeTutorial() {
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.3rem 0 0 0' }}>120 jobs</p>
 
                                 {/* Dummy Overlays */}
-                                <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top right, transparent, rgba(0,229,255,0.2))', border: '4px solid var(--accent-cyan)', opacity: rightOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '1.3rem', fontWeight: 800, borderRadius: '10px', transform: 'rotate(-15deg)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>GOT IT</div>
+                                <motion.div style={{ position: 'absolute', inset: 0, background: 'rgba(0,229,255,0.05)', border: '4px solid var(--accent-cyan)', opacity: rightOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '1.5rem', zIndex: 20, backdropFilter: 'blur(6px)' }}>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '1.3rem', fontWeight: 800, borderRadius: '10px', transform: 'rotate(-10deg)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>GOT IT</div>
                                 </motion.div>
 
-                                <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top left, transparent, rgba(150,150,150,0.2))', border: '4px solid #888', opacity: leftOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid #888', color: '#888', fontSize: '1.3rem', fontWeight: 800, borderRadius: '10px', transform: 'rotate(15deg)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>SKIP</div>
+                                <motion.div style={{ position: 'absolute', inset: 0, background: 'rgba(150,150,150,0.05)', border: '4px solid #888', opacity: leftOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '1.5rem', zIndex: 20, backdropFilter: 'blur(6px)' }}>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid #888', color: '#888', fontSize: '1.3rem', fontWeight: 800, borderRadius: '10px', transform: 'rotate(10deg)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>SKIP</div>
                                 </motion.div>
 
-                                <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(255,83,112,0.2))', border: '4px solid var(--accent-red)', opacity: downOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', transform: 'translateY(30px)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>AVOID</div>
+                                <motion.div style={{ position: 'absolute', inset: 0, background: 'rgba(255,83,112,0.05)', border: '4px solid var(--accent-red)', opacity: downOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '1.5rem', zIndex: 20, backdropFilter: 'blur(6px)' }}>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>AVOID</div>
                                 </motion.div>
 
-                                <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, transparent, rgba(0,230,118,0.2))', border: '4px solid #00e676', opacity: upOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid #00e676', color: '#00e676', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', transform: 'translateY(-30px)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>SHOW OFF</div>
+                                <motion.div style={{ position: 'absolute', inset: 0, background: 'rgba(0,230,118,0.05)', border: '4px solid #00e676', opacity: upOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '1.5rem', zIndex: 20, backdropFilter: 'blur(6px)' }}>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid #00e676', color: '#00e676', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>SHOW OFF</div>
                                 </motion.div>
 
                             </motion.div>
