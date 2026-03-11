@@ -139,12 +139,7 @@ export default function SwipeSkillSelector({ skills, onSwipeRight, onSwipeLeft, 
             } else if (direction === 'down') {
                 if (onSwipeDown) onSwipeDown(skillName);
             }
-            setExitDirections(prev => {
-                const next = { ...prev };
-                delete next[skillName];
-                return next;
-            });
-        }, 50);
+        }, 200);
     }, [onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown]);
 
     useEffect(() => {
