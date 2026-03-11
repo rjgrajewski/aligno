@@ -84,7 +84,15 @@ const SwipeCard = ({ skill, index, onSwipe, frontCard, exitDirection }) => {
                 whileTap={frontCard ? { cursor: 'grabbing' } : undefined}
             >
                 <div style={{ textAlign: 'center', padding: '1.5rem', zIndex: 10 }}>
-                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, overflowWrap: 'break-word', wordBreak: 'break-word', margin: 0 }}>
+                    <h2 style={{ 
+                        fontSize: skill.name.length > 10 ? 'clamp(1.5rem, 8vw, 2.2rem)' : 'clamp(1.8rem, 10vw, 2.8rem)', 
+                        fontWeight: 800, 
+                        overflowWrap: 'break-word', 
+                        wordBreak: 'normal', 
+                        hyphens: 'auto',
+                        lineHeight: 1.1,
+                        margin: 0 
+                    }}>
                         {skill.name}
                     </h2>
                     {skill.frequency > 0 && (
@@ -322,8 +330,8 @@ export default function SwipeSkillSelector({
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', overflow: 'hidden', padding: '1rem' }}>
-            <div style={{ position: 'relative', width: '320px', height: isMobile ? '360px' : '420px', maxWidth: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', overflow: 'hidden', padding: isMobile ? '2rem 1rem 1rem 1rem' : '1rem' }}>
+            <div style={{ position: 'relative', width: '320px', height: isMobile ? '360px' : '420px', maxWidth: '100%', marginBottom: isMobile ? '2.5rem' : '0' }}>
                 <AnimatePresence>
                     {visibleSkills.map((skill, i) => (
                         <SwipeCard 
