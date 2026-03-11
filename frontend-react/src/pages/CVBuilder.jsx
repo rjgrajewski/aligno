@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, auth } from '../services/api.js';
 import { useSkills } from '../hooks/useSkills.js';
 import SwipeSkillSelector from '../components/SwipeSkillSelector.jsx';
+import SkillSwipeTutorial from '../components/SkillSwipeTutorial.jsx';
 
 function useIsMobile() {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -185,6 +186,7 @@ export default function CVBuilder() {
 
     return (
         <div style={{ ...styles.wrapper, flexDirection: 'column', overflowX: 'hidden' }}>
+            <SkillSwipeTutorial />
             {/* MAIN AREA */}
             <div style={{ ...styles.main, padding: isMobile ? '0.5rem' : '1.5rem 2rem' }}>
                 
