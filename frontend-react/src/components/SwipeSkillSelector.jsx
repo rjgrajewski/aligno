@@ -150,6 +150,8 @@ function CategoryBadge({ color, icon, count, label, onClick }) {
 
 // --- Skills Modal ---
 function SkillsModal({ title, color, icon, skills, onRemove, onClearAll, onClose }) {
+    const [hoverClear, setHoverClear] = useState(false);
+
     return (
         <div
             onClick={onClose}
@@ -185,14 +187,19 @@ function SkillsModal({ title, color, icon, skills, onRemove, onClearAll, onClose
                         {icon} {title}
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>({skills.length})</span>
                     </h3>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         {skills.length > 0 && onClearAll && (
                             <button
                                 onClick={onClearAll}
+                                onMouseEnter={() => setHoverClear(true)}
+                                onMouseLeave={() => setHoverClear(false)}
                                 style={{
-                                    background: 'rgba(255,255,255,0.05)', border: `1px solid ${color}`,
-                                    color: color, fontSize: '0.75rem', fontWeight: 600,
-                                    padding: '0.2rem 0.6rem', borderRadius: '4px', cursor: 'pointer',
+                                    background: 'none', border: 'none',
+                                    color: hoverClear ? color : 'var(--text-secondary)',
+                                    fontSize: '0.85rem', fontWeight: 500,
+                                    textDecoration: 'underline', cursor: 'pointer',
+                                    padding: '0.2rem', margin: 0,
+                                    transition: 'color 0.2s',
                                     whiteSpace: 'nowrap'
                                 }}
                             >
