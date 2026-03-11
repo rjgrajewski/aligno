@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api.js';
 
 const MOCK_SKILLS = [
@@ -17,6 +17,7 @@ const MOCK_SKILLS = [
 export function useSkills(selected = []) {
     const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
+    const hasLoaded = useRef(false);
 
     const selectedStr = selected.join(',');
 
@@ -26,11 +27,15 @@ export function useSkills(selected = []) {
         const timeoutId = setTimeout(() => {
             api.getSkills(selectedStr ? selectedStr.split(',') : [])
                 .then(data => {
+                    hasLoaded.current = true;
                     setSkills(data);
                     setLoading(false);
                 })
                 .catch(() => {
-                    setSkills(MOCK_SKILLS.filter(s => !selectedStr.split(',').includes(s.name)));
+                    // Only fall back to mocks if we never loaded real data
+                    if (!hasLoaded.current) {
+                        setSkills(MOCK_SKILLS);
+                    }
                     setLoading(false);
                 });
         }, 150);

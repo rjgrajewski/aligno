@@ -200,14 +200,15 @@ export default function SwipeSkillSelector({ skills, onSwipeRight, onSwipeLeft, 
                 <IconButton color="var(--accent-cyan)" icon="✓" label="Know" onClick={() => visibleSkills.length && handleSwipe('right', visibleSkills[0].name)} />
             </div>
             
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '1.5rem', textAlign: 'center' }}>
-                Tip: You can use your <strong>keyboard arrows</strong> to swipe
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '1.5rem', textAlign: 'center', opacity: 0.7 }}>
+                {visibleSkills.length > 0 && <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{skills.length - localSkipped.size}</span>}{' '}
+                skills remaining · Use <strong>arrow keys</strong> or swipe
             </p>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', opacity: 0.7 }}>
-                <span>Right: Know</span>
-                <span>Left: Skip</span>
-                <span>Down: Don't Know</span>
-                <span>Up: Must Have</span>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', marginTop: '0.4rem', display: 'flex', gap: '0.8rem', flexWrap: 'wrap', justifyContent: 'center', opacity: 0.5 }}>
+                <span>→ Know</span>
+                <span>← Skip</span>
+                <span>↓ Block</span>
+                <span>↑ Must Have</span>
             </div>
         </div>
     );
