@@ -338,16 +338,14 @@ const styles = {
         background: 'var(--bg-elevated)',
         animation: 'pulse 1.5s ease-in-out infinite',
     },
-};
-
-function ConfirmationModal({ action, onConfirm, onUndo }) {
+};function ConfirmationModal({ action, onConfirm, onUndo }) {
     const [dontShowAgain, setDontShowAgain] = useState(false);
     
     const configs = {
-        up: { label: 'Show off', color: '#00e676', icon: '★', desc: 'Added to your visible CV & strongly improves job matches.' },
-        right: { label: 'Got it', color: 'var(--accent-cyan)', icon: '✓', desc: 'Improves job matches (but remains hidden from your CV).' },
-        down: { label: 'Avoid', color: 'var(--accent-red)', icon: '🚫', desc: 'Blocks this skill. Hides job requirements related to it.' },
-        left: { label: 'Skip', color: '#888', icon: '✕', desc: 'Skips for now without affecting your jobs or CV.' }
+        up: { label: 'SHOW OFF', color: '#00e676', rotation: '0deg', desc: 'Added to your visible CV & strongly improves job matches.' },
+        right: { label: 'GOT IT', color: 'var(--accent-cyan)', rotation: '-10deg', desc: 'Improves job matches (but remains hidden from your CV).' },
+        down: { label: 'AVOID', color: 'var(--accent-red)', rotation: '0deg', desc: 'Blocks this skill. Hides job requirements related to it.' },
+        left: { label: 'SKIP', color: '#888', rotation: '10deg', desc: 'Skips for now without affecting your jobs or CV.' }
     };
     
     const config = configs[action.direction];
@@ -373,21 +371,34 @@ function ConfirmationModal({ action, onConfirm, onUndo }) {
                     background: 'var(--bg-elevated)',
                     width: '100%', maxWidth: '400px',
                     borderRadius: '24px',
-                    padding: '2rem',
-                    border: `1px solid ${config.color}`,
-                    boxShadow: `0 20px 40px rgba(0,0,0,0.4), 0 0 20px ${config.color}22`,
-                    textAlign: 'center'
+                    padding: '2.5rem 2rem',
+                    border: `1px solid var(--border)`,
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
                 }}
             >
+                {/* Stamp Label */}
                 <div style={{ 
-                    fontSize: '3rem', marginBottom: '1rem', 
-                    color: config.color, filter: `drop-shadow(0 0 10px ${config.color}44)` 
+                    marginBottom: '2rem',
+                    padding: '0.6rem 1.8rem',
+                    border: `5px solid ${config.color}`,
+                    color: config.color,
+                    fontSize: '2rem',
+                    fontWeight: 900,
+                    borderRadius: '14px',
+                    transform: `rotate(${config.rotation})`,
+                    background: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(4px)',
+                    boxShadow: `0 10px 30px rgba(0,0,0,0.3), 0 0 15px ${config.color}33`,
+                    letterSpacing: '1px'
                 }}>
-                    {config.icon}
+                    {config.label}
                 </div>
                 
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>{config.label}</h2>
-                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2rem', fontSize: '1.05rem' }}>
                     {config.desc}
                 </p>
 
@@ -395,28 +406,30 @@ function ConfirmationModal({ action, onConfirm, onUndo }) {
                     onClick={() => setDontShowAgain(!dontShowAgain)}
                     style={{ 
                         display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        gap: '0.5rem', marginBottom: '2rem', cursor: 'pointer' 
+                        gap: '0.6rem', marginBottom: '2.5rem', cursor: 'pointer',
+                        userSelect: 'none'
                     }}
                 >
                     <div style={{ 
-                        width: '20px', height: '20px', borderRadius: '4px',
+                        width: '22px', height: '22px', borderRadius: '5px',
                         border: '2px solid var(--border)',
                         background: dontShowAgain ? config.color : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                     }}>
-                        {dontShowAgain && <span style={{ color: '#000', fontSize: '12px', fontWeight: 900 }}>✓</span>}
+                        {dontShowAgain && <span style={{ color: '#000', fontSize: '14px', fontWeight: 900 }}>✓</span>}
                     </div>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Don't show again</span>
+                    <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Don't show again</span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
                     <button 
                         onClick={onUndo}
                         style={{ 
                             flex: 1, padding: '1rem', borderRadius: '14px',
-                            background: 'var(--bg-surface)', border: '1px solid var(--border)',
-                            color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer'
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                            color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer',
+                            fontSize: '1rem'
                         }}
                     >
                         Undo
@@ -424,10 +437,11 @@ function ConfirmationModal({ action, onConfirm, onUndo }) {
                     <button 
                         onClick={() => onConfirm(dontShowAgain)}
                         style={{ 
-                            flex: 2, padding: '1rem', borderRadius: '14px',
+                            flex: 1.8, padding: '1rem', borderRadius: '14px',
                             background: config.color, border: 'none',
-                            color: '#000', fontWeight: 700, cursor: 'pointer',
-                            boxShadow: `0 5px 15px ${config.color}44`
+                            color: '#000', fontWeight: 750, cursor: 'pointer',
+                            fontSize: '1rem',
+                            boxShadow: `0 8px 20px ${config.color}33`
                         }}
                     >
                         OK
