@@ -65,10 +65,10 @@ export default function SkillSwipeTutorial() {
     }, [x, y]);
 
     const tutorials = {
-        up: { icon: '★', label: 'Must Have', color: '#00e676', desc: 'Added to your visible CV & strongly improves job matches.' },
-        right: { icon: '✓', label: 'Know', color: 'var(--accent-cyan)', desc: 'Improves job matches (but remains hidden from your CV).' },
-        down: { icon: '🚫', label: "Don't Know", color: 'var(--accent-red)', desc: 'Blocks this skill. Hides job requirements related to it.' },
-        left: { icon: '✕', label: 'Skipped', color: '#888', desc: 'Skips for now without affecting your jobs or CV.' },
+        up: { icon: '★', label: 'Show off', color: '#00e676', desc: 'Added to your visible CV & strongly improves job matches.' },
+        right: { icon: '✓', label: 'Got it', color: 'var(--accent-cyan)', desc: 'Improves job matches (but remains hidden from your CV).' },
+        down: { icon: '🚫', label: 'Avoid', color: 'var(--accent-red)', desc: 'Blocks this skill. Hides job requirements related to it.' },
+        left: { icon: '✕', label: 'Skip', color: '#888', desc: 'Skips for now without affecting your jobs or CV.' },
         'null': { icon: '👆', label: 'Play with the card!', color: 'var(--text-primary)', desc: 'Drag the card in any direction to see how it works.' }
     };
 
@@ -154,7 +154,7 @@ export default function SkillSwipeTutorial() {
 
                                 {/* Dummy Overlays */}
                                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top right, transparent, rgba(0,229,255,0.2))', border: '4px solid var(--accent-cyan)', opacity: rightOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '1.3rem', fontWeight: 800, borderRadius: '10px', transform: 'rotate(-15deg)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>KNOW</div>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '1.3rem', fontWeight: 800, borderRadius: '10px', transform: 'rotate(-15deg)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>GOT IT</div>
                                 </motion.div>
 
                                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top left, transparent, rgba(150,150,150,0.2))', border: '4px solid #888', opacity: leftOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -162,11 +162,11 @@ export default function SkillSwipeTutorial() {
                                 </motion.div>
 
                                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(255,83,112,0.2))', border: '4px solid var(--accent-red)', opacity: downOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', transform: 'translateY(30px)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>DON'T KNOW</div>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', transform: 'translateY(30px)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>AVOID</div>
                                 </motion.div>
 
                                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, transparent, rgba(0,230,118,0.2))', border: '4px solid #00e676', opacity: upOpacity, borderRadius: '14px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid #00e676', color: '#00e676', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', transform: 'translateY(-30px)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>MUST HAVE</div>
+                                    <div style={{ padding: '0.3rem 0.8rem', border: '3px solid #00e676', color: '#00e676', fontSize: '1.2rem', fontWeight: 800, borderRadius: '10px', transform: 'translateY(-30px)', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}>SHOW OFF</div>
                                 </motion.div>
 
                             </motion.div>

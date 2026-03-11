@@ -104,7 +104,7 @@ const SwipeCard = ({ skill, index, onSwipe, frontCard, exitDirection }) => {
 
                 {/* Overlays */}
                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top right, transparent, rgba(0,229,255,0.2))', border: '5px solid var(--accent-cyan)', opacity: rightOpacity, borderRadius: '20px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ padding: '0.5rem 1.5rem', border: '4px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '2rem', fontWeight: 800, borderRadius: '12px', transform: 'rotate(-15deg)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>KNOW</div>
+                    <div style={{ padding: '0.5rem 1.5rem', border: '4px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '2rem', fontWeight: 800, borderRadius: '12px', transform: 'rotate(-15deg)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>GOT IT</div>
                 </motion.div>
 
                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top left, transparent, rgba(150,150,150,0.2))', border: '5px solid #888', opacity: leftOpacity, borderRadius: '20px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -112,11 +112,11 @@ const SwipeCard = ({ skill, index, onSwipe, frontCard, exitDirection }) => {
                 </motion.div>
 
                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(255,83,112,0.2))', border: '5px solid var(--accent-red)', opacity: downOpacity, borderRadius: '20px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ padding: '0.5rem 1.5rem', border: '4px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '1.8rem', fontWeight: 800, borderRadius: '12px', transform: 'translateY(50px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>DON'T KNOW</div>
+                    <div style={{ padding: '0.5rem 1.5rem', border: '4px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '1.8rem', fontWeight: 800, borderRadius: '12px', transform: 'translateY(50px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>AVOID</div>
                 </motion.div>
 
                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, transparent, rgba(0,230,118,0.2))', border: '5px solid #00e676', opacity: upOpacity, borderRadius: '20px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ padding: '0.5rem 1.5rem', border: '4px solid #00e676', color: '#00e676', fontSize: '1.8rem', fontWeight: 800, borderRadius: '12px', transform: 'translateY(-50px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>MUST HAVE</div>
+                    <div style={{ padding: '0.5rem 1.5rem', border: '4px solid #00e676', color: '#00e676', fontSize: '1.8rem', fontWeight: 800, borderRadius: '12px', transform: 'translateY(-50px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>SHOW OFF</div>
                 </motion.div>
             </motion.div>
         </motion.div>
@@ -288,17 +288,17 @@ export default function SwipeSkillSelector({
     // Category config for modal
     const categories = {
         know: {
-            title: 'Know', color: 'var(--accent-cyan)', icon: '✓',
+            title: 'Got it', color: 'var(--accent-cyan)', icon: '✓',
             skills: selected && highlighted ? [...selected].filter(s => !highlighted.has(s)) : [],
             onRemove: onRemoveSelected,
         },
         mustHave: {
-            title: 'Must Have', color: '#00e676', icon: '★',
+            title: 'Show off', color: '#00e676', icon: '★',
             skills: highlighted ? [...highlighted] : [],
             onRemove: (name) => { if (onToggleHighlighted) onToggleHighlighted(name); },
         },
         block: {
-            title: "Don't Know", color: 'var(--accent-red)', icon: '🚫',
+            title: 'Avoid', color: 'var(--accent-red)', icon: '🚫',
             skills: anti ? [...anti] : [],
             onRemove: onRemoveAnti,
         },
@@ -314,10 +314,10 @@ export default function SwipeSkillSelector({
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', gap: '1.5rem' }}>
                 <span>{search ? `No skills found for "${search}"` : 'All caught up!'}</span>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <CategoryBadge color="#888" icon="✕" count={Math.max(0, skipCount)} label="Skipped" onClick={() => setModalCategory('skip')} />
-                    <CategoryBadge color="var(--accent-red)" icon="↓" count={blockCount} label="Don't Know" onClick={() => setModalCategory('block')} />
-                    <CategoryBadge color="var(--accent-cyan)" icon="✓" count={Math.max(0, knowCount)} label="Know" onClick={() => setModalCategory('know')} />
-                    <CategoryBadge color="#00e676" icon="★" count={mustHaveCount} label="Must Have" onClick={() => setModalCategory('mustHave')} />
+                    <CategoryBadge color="#888" icon="✕" count={Math.max(0, skipCount)} label="Skip" onClick={() => setModalCategory('skip')} />
+                    <CategoryBadge color="var(--accent-red)" icon="↓" count={blockCount} label="Avoid" onClick={() => setModalCategory('block')} />
+                    <CategoryBadge color="var(--accent-cyan)" icon="✓" count={Math.max(0, knowCount)} label="Got it" onClick={() => setModalCategory('know')} />
+                    <CategoryBadge color="#00e676" icon="★" count={mustHaveCount} label="Show off" onClick={() => setModalCategory('mustHave')} />
                 </div>
                 {modalCategory && categories[modalCategory] && (
                     <SkillsModal
@@ -348,10 +348,10 @@ export default function SwipeSkillSelector({
             
             {/* Badges (Mobile and Desktop) */}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', zIndex: 15 }}>
-                <CategoryBadge color="#888" icon="✕" count={Math.max(0, skipCount)} label="Skipped" onClick={() => setModalCategory('skip')} />
-                <CategoryBadge color="var(--accent-red)" icon="↓" count={blockCount} label="Don't Know" onClick={() => setModalCategory('block')} />
-                <CategoryBadge color="var(--accent-cyan)" icon="✓" count={Math.max(0, knowCount)} label="Know" onClick={() => setModalCategory('know')} />
-                <CategoryBadge color="#00e676" icon="★" count={mustHaveCount} label="Must Have" onClick={() => setModalCategory('mustHave')} />
+                <CategoryBadge color="#888" icon="✕" count={Math.max(0, skipCount)} label="Skip" onClick={() => setModalCategory('skip')} />
+                <CategoryBadge color="var(--accent-red)" icon="↓" count={blockCount} label="Avoid" onClick={() => setModalCategory('block')} />
+                <CategoryBadge color="var(--accent-cyan)" icon="✓" count={Math.max(0, knowCount)} label="Got it" onClick={() => setModalCategory('know')} />
+                <CategoryBadge color="#00e676" icon="★" count={mustHaveCount} label="Show off" onClick={() => setModalCategory('mustHave')} />
             </div>
 
             {/* Modal */}
