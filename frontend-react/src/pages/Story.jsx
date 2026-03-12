@@ -498,6 +498,74 @@ const VibecodingSection = () => {
 
 import { AnimatePresence } from 'framer-motion';
 
+const SwipeCardDemo = () => {
+    const demoSkills = [
+        { name: 'React', color: 'var(--accent-cyan)', direction: 'right', label: 'GOT IT', rotation: -10 },
+        { name: 'Python', color: 'var(--accent-violet)', direction: 'up', label: 'SHOW OFF', rotation: 5 },
+        { name: 'SQL', color: 'var(--accent-amber)', direction: 'left', label: 'SKIP', rotation: -5 },
+        { name: 'Go', color: 'var(--accent-red)', direction: 'down', label: 'AVOID', rotation: 10 },
+    ];
+
+    const [activeIndex, setActiveIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setActiveIndex((prev) => (prev + 1) % demoSkills.length);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [demoSkills.length]);
+
+    return (
+        <div className="swipe-demo-container">
+            <AnimatePresence mode="popLayout">
+                {demoSkills.map((skill, index) => {
+                    if (index !== activeIndex) return null;
+                    
+                    return (
+                        <motion.div
+                            key={skill.name}
+                            initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ 
+                                x: skill.direction === 'right' ? 400 : skill.direction === 'left' ? -400 : 0,
+                                y: skill.direction === 'up' ? -400 : skill.direction === 'down' ? 400 : 0,
+                                opacity: 0,
+                                rotate: skill.direction === 'right' ? 25 : skill.direction === 'left' ? -25 : 0,
+                                transition: { duration: 0.6, ease: "easeOut" }
+                            }}
+                            className="swipe-demo-card"
+                        >
+                            <h3 style={{ fontSize: '2.2rem', fontWeight: 800, textAlign: 'center', margin: 0, color: 'var(--text-primary)' }}>
+                                {skill.name}
+                            </h3>
+                            
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: [0, 1, 1, 0], scale: [0.5, 1, 1, 0.5] }}
+                                transition={{ delay: 0.8, duration: 1.5, times: [0, 0.1, 0.9, 1] }}
+                                className="swipe-demo-label"
+                                style={{
+                                    borderColor: skill.color,
+                                    color: skill.color,
+                                    transform: `translate(-50%, -50%) rotate(${skill.rotation}deg)`,
+                                    top: '50%',
+                                    left: '50%'
+                                }}
+                            >
+                                {skill.label}
+                            </motion.div>
+                        </motion.div>
+                    );
+                })}
+            </AnimatePresence>
+            
+            {/* Background card decorations */}
+            <div style={{ position: 'absolute', width: '180px', height: '260px', background: 'var(--bg-elevated)', borderRadius: '24px', border: '1px solid var(--border)', opacity: 0.4, transform: 'translateY(12px) scale(0.95)', zIndex: 5 }} />
+            <div style={{ position: 'absolute', width: '160px', height: '240px', background: 'var(--bg-elevated)', borderRadius: '24px', border: '1px solid var(--border)', opacity: 0.2, transform: 'translateY(24px) scale(0.9)', zIndex: 0 }} />
+        </div>
+    );
+};
+
 const DesigningExperienceSection = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -527,7 +595,7 @@ const DesigningExperienceSection = () => {
                                         <p className="paragraph">Even after removing much of the noise through normalization, the skill dictionary still contained several thousand entries. My first experiments used dropdowns and text autocomplete, but the sheer volume of suggestions remained overwhelming and discouraging.</p>
 
                                         <p className="paragraph" style={{ marginBottom: 0 }}>
-                                            So I reframed the problem: what if selecting skills felt intuitive, playful, and almost game‑like instead of another rigid filter?
+                                            So I reframed the problem: what if selecting skills felt intuitive, playful, and almost game‑like? I wanted the experience to feel more like a discovery process than a data entry task.
                                         </p>
                                     </motion.div>
                                 ) : (
@@ -541,11 +609,11 @@ const DesigningExperienceSection = () => {
 
                                         <p className="paragraph">I wanted the experience to feel fundamentally different from traditional job search filters. Instead of forms and dropdowns, the interface needed to feel alive, responsive, and a bit playful.</p>
 
-                                        <p className="paragraph">Using Vite and React as the foundation, I built an interactive skill map where technologies behave more like objects in a living ecosystem than static UI elements. With the help of D3‑force and Framer Motion, the interface reacts fluidly to every user action — bubbles move, reposition, and flow into the user profile in a way that feels intentional and satisfying.</p>
+                                        <p className="paragraph">Using Vite and React as the foundation, I built a card‑swiping interface where technologies are presented as a deck to be explored. With the help of Framer Motion, the interface reacts fluidly to every user action — cards can be swiped in different directions to categorize skills: Got it, Avoid, Show off, or Skip. It’s a rhythmic, satisfying way to build a professional profile.</p>
 
-                                        <p className="paragraph">The goal wasn’t visual flash for its own sake. It was about reducing cognitive friction. Users don’t have to think in terms of filters or queries — they explore. They tap. They follow momentum. The system continuously responds by surfacing the next most relevant skills, keeping the experience smooth and engaging.</p>
+                                        <p className="paragraph">The goal wasn’t visual flash for its own sake. It was about reducing cognitive friction. Users don’t have to think in terms of filters or queries — they swipe. They follow momentum. This simple gesture allows for rapid processing of hundreds of skills without the fatigue of traditional interfaces.</p>
 
-                                        <p className="paragraph" style={{ marginBottom: 0 }}>Under the hood, the experience is carefully tuned for performance so the map remains perfectly fluid even with many elements on screen. But from the user’s perspective, it should simply feel fast, natural, and oddly satisfying.</p>
+                                        <p className="paragraph" style={{ marginBottom: 0 }}>Under the hood, the experience is carefully tuned for performance so the swiping remains perfectly fluid even with many elements on screen. But from the user’s perspective, it should simply feel fast, natural, and oddly satisfying.</p>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -575,12 +643,7 @@ const DesigningExperienceSection = () => {
                         </div>
                     </motion.div>
                     <motion.div variants={fadeUp} className="col-right">
-                        <div className="vibe-map">
-                            <motion.div className="vibe-node" style={{ top: '20%', left: '30%', borderColor: 'var(--accent-cyan)' }} animate={{ y: [0, -10, 0], x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 4 }}>React</motion.div>
-                            <motion.div className="vibe-node" style={{ top: '50%', left: '50%', borderColor: 'var(--accent-violet)', transform: 'translate(-50%, -50%)', background: 'var(--bg-elevated)', border: '2px solid var(--accent-violet)' }} animate={{ y: [0, 10, 0], scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 5 }}>Skills Match</motion.div>
-                            <motion.div className="vibe-node" style={{ top: '70%', left: '20%', borderColor: 'var(--accent-amber)' }} animate={{ y: [0, 8, 0], x: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 4.5 }}>Python</motion.div>
-                            <motion.div className="vibe-node" style={{ top: '30%', right: '20%', borderColor: 'var(--accent-amber)' }} animate={{ y: [0, -5, 0], x: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 3 }}>SQL</motion.div>
-                        </div>
+                        <SwipeCardDemo />
                     </motion.div>
                 </motion.div>
             </div>
@@ -1023,7 +1086,7 @@ export default function Story() {
                                 Born from a simple observation: right before applying, it often makes sense to manually tailor your document. flowjob renders the CV directly in the browser for true live preview.
                             </p>
                             <p className="paragraph">
-                                Skills selected on the map don’t disappear into a black box — they flow directly into the CV builder. In the end, it turns your activity inside flowjob into a market-ready asset.
+                                Skills selected from the deck don’t disappear into a black box — they flow directly into the CV builder. In the end, it turns your activity inside flowjob into a market‑ready asset.
                             </p>
                         </motion.div>
                         <motion.div variants={fadeUp} className="col-right">
