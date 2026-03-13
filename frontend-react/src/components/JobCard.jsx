@@ -54,7 +54,7 @@ function MetaChip({ icon, label }) {
     );
 }
 
-export default function JobCard({ job, userSkills = [], antiSkills = [], onToggleSkill, onToggleAnti }) {
+export default function JobCard({ job, userSkills = [], antiSkills = [], onPreviewSkill }) {
     const matchedSkills = new Set(userSkills);
     const antiSet = new Set(antiSkills);
 
@@ -117,8 +117,8 @@ export default function JobCard({ job, userSkills = [], antiSkills = [], onToggl
                             skill={skill}
                             matched={matchedSkills.has(skill)}
                             isAnti={antiSet.has(skill)}
-                            onLeftClick={() => onToggleSkill?.(skill)}
-                            onRightClick={() => onToggleAnti?.(skill)}
+                            onLeftClick={() => onPreviewSkill?.(skill)}
+                            onRightClick={() => onPreviewSkill?.(skill)}
                         />
                     ))}
                 </div>

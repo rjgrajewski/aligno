@@ -1,14 +1,21 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api, auth } from '../services/api.js';
 import { useOffers } from '../hooks/useOffers.js';
 import JobCard from '../components/JobCard.jsx';
 import FilterBar from '../components/FilterBar.jsx';
 import SparklesBg from '../components/Sparkles.jsx';
+import SkillSwipeOverlay, { SwipeDirectionConfirmModal } from '../components/SkillSwipeOverlay.jsx';
 
 export default function JobBoard() {
     const { offers: jobs, loading } = useOffers();
     const [userSkills, setUserSkills] = useState(new Set());
     const [antiSkills, setAntiSkills] = useState(new Set());
+    const [highlightedSkills, setHighlightedSkills] = useState(new Set());
+    const [skippedSkills, setSkippedSkills] = useState(new Set());
+    const [confirmedTutorials, setConfirmedTutorials] = useState([]);
+    const [previewSkill, setPreviewSkill] = useState(null);
+    const [pendingAction, setPendingAction] = useState(null);
 
     const initialLoadDone = useRef(false);
 
@@ -31,6 +38,9 @@ export default function JobBoard() {
                 const cv = await api.getUserCV(user.id);
                 setUserSkills(new Set(cv.skills || []));
                 setAntiSkills(new Set(cv.antiSkills || []));
+                setHighlightedSkills(new Set(cv.highlightedSkills || []));
+                setSkippedSkills(new Set(cv.skippedSkills || []));
+                setConfirmedTutorials(cv.confirmedTutorials || []);
                 setTimeout(() => { initialLoadDone.current = true; }, 100);
             }
         };
@@ -50,7 +60,10 @@ export default function JobBoard() {
             try {
                 await api.saveUserCV(user.id, {
                     skills: [...userSkills],
-                    antiSkills: [...antiSkills]
+                    antiSkills: [...antiSkills],
+                    highlightedSkills: [...highlightedSkills].filter(skill => userSkills.has(skill)),
+                    skippedSkills: [...skippedSkills],
+                    confirmedTutorials,
                 });
             } catch (e) {
                 console.error("Failed to save skills from JobBoard:", e);
@@ -58,46 +71,39 @@ export default function JobBoard() {
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, [userSkills, antiSkills]);
+    }, [userSkills, antiSkills, highlightedSkills, skippedSkills, confirmedTutorials]);
 
-    const handleToggleSkill = useCallback((skill) => {
-        setAntiSkills(prev => {
-            if (prev.has(skill)) {
-                const next = new Set(prev);
-                next.delete(skill);
-                return next;
-            }
-            return prev;
-        });
-        setUserSkills(prev => {
-            const next = new Set(prev);
-            if (next.has(skill)) {
-                next.delete(skill);
-            } else {
-                next.add(skill);
-            }
-            return next;
-        });
-    }, []);
+    const assignSkillDirection = useCallback((direction, name) => {
+        if (direction === 'right') {
+            setAntiSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkippedSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setUserSkills(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlightedSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            return;
+        }
 
-    const handleToggleAnti = useCallback((skill) => {
-        setUserSkills(prev => {
-            if (prev.has(skill)) {
-                const next = new Set(prev);
-                next.delete(skill);
-                return next;
-            }
-            return prev;
-        });
-        setAntiSkills(prev => {
-            const next = new Set(prev);
-            if (next.has(skill)) {
-                next.delete(skill);
-            } else {
-                next.add(skill);
-            }
-            return next;
-        });
+        if (direction === 'up') {
+            setAntiSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkippedSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setUserSkills(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlightedSkills(prev => { const next = new Set(prev); next.add(name); return next; });
+            return;
+        }
+
+        if (direction === 'down') {
+            setUserSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkippedSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setAntiSkills(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlightedSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            return;
+        }
+
+        if (direction === 'left') {
+            setUserSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setAntiSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkippedSkills(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlightedSkills(prev => { const next = new Set(prev); next.delete(name); return next; });
+        }
     }, []);
 
     // Derive unique filter options from loaded data
@@ -152,6 +158,27 @@ export default function JobBoard() {
         return jobs.filter(job => job.requiredSkills?.some(s => antiSkills.has(s))).length;
     }, [jobs, antiSkills]);
 
+    const getSkillFrequency = useCallback((skillName) => (
+        jobs.filter(job => job.requiredSkills?.includes(skillName)).length
+    ), [jobs]);
+
+    const openSkillPreview = useCallback((skillName) => {
+        setPreviewSkill({ name: skillName, frequency: getSkillFrequency(skillName) });
+    }, [getSkillFrequency]);
+
+    const handlePreviewSwipe = useCallback((direction, name) => {
+        if (!previewSkill) return;
+        const skill = previewSkill;
+        setPreviewSkill(null);
+
+        if (confirmedTutorials.includes(direction)) {
+            assignSkillDirection(direction, name);
+            return;
+        }
+
+        setPendingAction({ direction, skillName: name, source: 'preview', skill });
+    }, [assignSkillDirection, confirmedTutorials, previewSkill]);
+
     const visibleJobs = useMemo(() => {
         return filteredJobs.slice(0, visibleCount);
     }, [filteredJobs, visibleCount]);
@@ -162,6 +189,31 @@ export default function JobBoard() {
 
     return (
         <div style={{ position: 'relative' }}>
+            <AnimatePresence>
+                {previewSkill && (
+                    <SkillSwipeOverlay
+                        skill={previewSkill}
+                        onSwipe={handlePreviewSwipe}
+                        onClose={() => setPreviewSkill(null)}
+                    />
+                )}
+                {pendingAction && (
+                    <SwipeDirectionConfirmModal
+                        action={pendingAction}
+                        onConfirm={(dontShowAgain) => {
+                            if (dontShowAgain) {
+                                setConfirmedTutorials(prev => [...prev, pendingAction.direction]);
+                            }
+                            assignSkillDirection(pendingAction.direction, pendingAction.skillName);
+                            setPendingAction(null);
+                        }}
+                        onUndo={() => {
+                            setPreviewSkill(pendingAction.skill);
+                            setPendingAction(null);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
             <SparklesBg />
             <div className="container" style={{ maxWidth: '860px', padding: '2rem 1.5rem', position: 'relative', zIndex: 1 }}>
                 {/* Page header */}
@@ -216,8 +268,7 @@ export default function JobBoard() {
                                     job={job}
                                     userSkills={userSkillsArray}
                                     antiSkills={antiSkillsArray}
-                                    onToggleSkill={handleToggleSkill}
-                                    onToggleAnti={handleToggleAnti}
+                                    onPreviewSkill={openSkillPreview}
                                 />
                             );
                         })}

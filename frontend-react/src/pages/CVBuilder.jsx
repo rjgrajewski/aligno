@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, auth } from '../services/api.js';
 import { useSkills } from '../hooks/useSkills.js';
 import SwipeSkillSelector from '../components/SwipeSkillSelector.jsx';
+import SkillSwipeOverlay, { SwipeDirectionConfirmModal } from '../components/SkillSwipeOverlay.jsx';
 
 function useIsMobile() {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -25,6 +26,7 @@ export default function CVBuilder() {
     const [anti, setAnti] = useState(new Set());
     const [confirmedTutorials, setConfirmedTutorials] = useState([]);
     const [pendingAction, setPendingAction] = useState(null); // { direction, skillName }
+    const [previewSkill, setPreviewSkill] = useState(null);
 
     const selectedRef = useRef(new Set());
     const antiRef = useRef(new Set());
@@ -122,88 +124,43 @@ export default function CVBuilder() {
 
 
 
-    const toggleHighlighted = useCallback((name) => {
-        setHighlighted(h => {
-            const n = new Set(h);
-            n.has(name) ? n.delete(name) : n.add(name);
-            return n;
-        });
-    }, []);
-
-    const toggleSkill = useCallback((name) => {
-        const curAnti = antiRef.current;
-        const curSkipped = skippedRef.current;
-        if (curAnti.has(name)) {
-            setAnti(a => { const n = new Set(a); n.delete(name); return n; });
-        }
-        if (curSkipped.has(name)) {
-            setSkipped(s => { const n = new Set(s); n.delete(name); return n; });
-        }
-        setSelected(s => {
-            const n = new Set(s);
-            n.has(name) ? n.delete(name) : n.add(name);
-            return n;
-        });
-    }, []);
-
-    const toggleAnti = useCallback((name) => {
-        const curSelected = selectedRef.current;
-        const curSkipped = skippedRef.current;
-        if (curSelected.has(name)) {
-            setSelected(s => { const n = new Set(s); n.delete(name); return n; });
-        }
-        if (curSkipped.has(name)) {
-            setSkipped(s => { const n = new Set(s); n.delete(name); return n; });
-        }
-        setAnti(a => {
-            const n = new Set(a);
-            n.has(name) ? n.delete(name) : n.add(name);
-            return n;
-        });
-    }, []);
-
-    const toggleSkipped = useCallback((name) => {
-        const curSelected = selectedRef.current;
-        const curAnti = antiRef.current;
-        if (curSelected.has(name)) {
-            setSelected(s => { const n = new Set(s); n.delete(name); return n; });
-        }
-        if (curAnti.has(name)) {
-            setAnti(a => { const n = new Set(a); n.delete(name); return n; });
-        }
-        setSkipped(s => {
-            const n = new Set(s);
-            n.has(name) ? n.delete(name) : n.add(name);
-            return n;
-        });
-    }, []);
-
-    const removeSkipped = useCallback((name) => {
-        setSkipped(s => { const n = new Set(s); n.delete(name); return n; });
-    }, []);
-
     const getSkillFrequency = useCallback((name) => {
         const skill = skills.find(s => s.name === name);
         return skill ? skill.frequency : 0;
     }, [skills]);
 
-    const handleReSwipe = useCallback((name, category) => {
-        // 1. Remove from category
-        if (category === 'know') {
-            setSelected(prev => { const n = new Set(prev); n.delete(name); return n; });
-        } else if (category === 'mustHave') {
-            setSelected(prev => { const n = new Set(prev); n.delete(name); return n; });
-            setHighlighted(prev => { const n = new Set(prev); n.delete(name); return n; });
-        } else if (category === 'block') {
-            setAnti(prev => { const n = new Set(prev); n.delete(name); return n; });
-        } else if (category === 'skip') {
-            setSkipped(prev => { const n = new Set(prev); n.delete(name); return n; });
+    const assignSkillDirection = useCallback((direction, name) => {
+        if (direction === 'right') {
+            setAnti(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkipped(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSelected(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlighted(prev => { const next = new Set(prev); next.delete(name); return next; });
+            return;
         }
 
-        // 2. Add to top of deck
-        const freq = getSkillFrequency(name);
-        setBufferedDeck(prevDeck => [{ name, frequency: freq }, ...prevDeck.filter(s => s.name !== name)]);
-    }, [getSkillFrequency]);
+        if (direction === 'up') {
+            setAnti(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkipped(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSelected(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlighted(prev => { const next = new Set(prev); next.add(name); return next; });
+            return;
+        }
+
+        if (direction === 'down') {
+            setSelected(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkipped(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setAnti(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlighted(prev => { const next = new Set(prev); next.delete(name); return next; });
+            return;
+        }
+
+        if (direction === 'left') {
+            setSelected(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setAnti(prev => { const next = new Set(prev); next.delete(name); return next; });
+            setSkipped(prev => { const next = new Set(prev); next.add(name); return next; });
+            setHighlighted(prev => { const next = new Set(prev); next.delete(name); return next; });
+        }
+    }, []);
 
     const handleClearCategory = useCallback((category) => {
         const curSelected = selectedRef.current;
@@ -239,27 +196,34 @@ export default function CVBuilder() {
         }
     }, [getSkillFrequency, highlighted]);
 
-    const applyAction = useCallback((direction, name) => {
-        if (direction === 'right') toggleSkill(name);
-        else if (direction === 'left') toggleSkipped(name);
-        else if (direction === 'up') {
-            toggleSkill(name);
-            setHighlighted(h => {
-                const next = new Set(h);
-                next.add(name);
-                return next;
-            });
+    const queueSwipe = useCallback((direction, name, source, skill) => {
+        if (confirmedTutorials.includes(direction)) {
+            assignSkillDirection(direction, name);
+            return;
         }
-        else if (direction === 'down') toggleAnti(name);
-    }, [toggleSkill, toggleSkipped, toggleAnti]);
+
+        setPendingAction({ direction, skillName: name, source, skill });
+    }, [assignSkillDirection, confirmedTutorials]);
 
     const handleSwipe = useCallback((direction, name) => {
+        const skill = { name, frequency: getSkillFrequency(name) };
+        queueSwipe(direction, name, 'deck', skill);
+    }, [getSkillFrequency, queueSwipe]);
+
+    const handlePreviewSwipe = useCallback((direction, name) => {
+        if (!previewSkill) return;
+        const skill = previewSkill;
+        setPreviewSkill(null);
         if (confirmedTutorials.includes(direction)) {
-            applyAction(direction, name);
+            assignSkillDirection(direction, name);
         } else {
-            setPendingAction({ direction, skillName: name });
+            setPendingAction({ direction, skillName: name, source: 'preview', skill });
         }
-    }, [confirmedTutorials, applyAction]);
+    }, [assignSkillDirection, confirmedTutorials, previewSkill]);
+
+    const handlePreviewSkill = useCallback((name) => {
+        setPreviewSkill({ name, frequency: getSkillFrequency(name) });
+    }, [getSkillFrequency]);
 
     // Keep highlighted a subset of selected (e.g. when user deselects a skill)
     useEffect(() => {
@@ -276,22 +240,30 @@ export default function CVBuilder() {
         <div style={{ ...styles.wrapper, flexDirection: 'column', overflowX: 'hidden' }}>
             <AnimatePresence>
                 {pendingAction && (
-                    <ConfirmationModal
+                    <SwipeDirectionConfirmModal
                         action={pendingAction}
                         onConfirm={(dontShowAgain) => {
                             if (dontShowAgain) {
                                 setConfirmedTutorials(prev => [...prev, pendingAction.direction]);
                             }
-                            applyAction(pendingAction.direction, pendingAction.skillName);
+                            assignSkillDirection(pendingAction.direction, pendingAction.skillName);
                             setPendingAction(null);
                         }}
                         onUndo={() => {
-                            // If frequency is available in original data, we should try to keep it.
-                            // But for now we just put back the name.
-                            const name = pendingAction.skillName;
-                            setBufferedDeck(prev => [{ name, frequency: 0 }, ...prev]);
+                            if (pendingAction.source === 'preview') {
+                                setPreviewSkill(pendingAction.skill);
+                            } else {
+                                setBufferedDeck(prev => [pendingAction.skill, ...prev.filter(s => s.name !== pendingAction.skill.name)]);
+                            }
                             setPendingAction(null);
                         }}
+                    />
+                )}
+                {previewSkill && (
+                    <SkillSwipeOverlay
+                        skill={previewSkill}
+                        onSwipe={handlePreviewSwipe}
+                        onClose={() => setPreviewSkill(null)}
                     />
                 )}
             </AnimatePresence>
@@ -347,7 +319,7 @@ export default function CVBuilder() {
                             anti={anti}
                             highlighted={highlighted}
                             skipped={skipped}
-                            onReSwipe={handleReSwipe}
+                            onSkillPreview={handlePreviewSkill}
                             onClearCategory={handleClearCategory}
                             onSwipeRight={(name) => handleSwipe('right', name)}
                             onSwipeLeft={(name) => handleSwipe('left', name)}
@@ -393,116 +365,4 @@ const styles = {
         background: 'var(--bg-elevated)',
         animation: 'pulse 1.5s ease-in-out infinite',
     },
-}; function ConfirmationModal({ action, onConfirm, onUndo }) {
-    const [dontShowAgain, setDontShowAgain] = useState(false);
-
-    const configs = {
-        up: { label: 'SHOW OFF', color: '#00e676', rotation: '0deg', desc: 'Places the skill on your CV and improves job matches.' },
-        right: { label: 'GOT IT', color: 'var(--accent-cyan)', rotation: '-10deg', desc: 'Improves job matches but remains invisible in your CV.' },
-        down: { label: 'AVOID', color: 'var(--accent-red)', rotation: '0deg', desc: 'Eliminates matches with job listings that require the skill.' },
-        left: { label: 'SKIP', color: '#888', rotation: '10deg', desc: 'Skips the skill without affecting job matches or your CV.' }
-    };
-
-    const config = configs[action.direction];
-
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-                position: 'fixed', inset: 0, zIndex: 2000,
-                background: 'rgba(0,0,0,0.85)',
-                backdropFilter: 'blur(8px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '1.5rem'
-            }}
-        >
-            <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                style={{
-                    background: 'var(--bg-elevated)',
-                    width: '100%', maxWidth: '400px',
-                    borderRadius: '24px',
-                    padding: '2.5rem 2rem',
-                    border: `1px solid var(--border)`,
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                    textAlign: 'center',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center'
-                }}
-            >
-                {/* Stamp Label */}
-                <div style={{
-                    marginBottom: '2rem',
-                    padding: '0.6rem 1.8rem',
-                    border: `5px solid ${config.color}`,
-                    color: config.color,
-                    fontSize: '2rem',
-                    fontWeight: 900,
-                    borderRadius: '14px',
-                    transform: `rotate(${config.rotation})`,
-                    background: 'rgba(0,0,0,0.6)',
-                    backdropFilter: 'blur(4px)',
-                    boxShadow: `0 10px 30px rgba(0,0,0,0.3), 0 0 15px ${config.color}33`,
-                    letterSpacing: '1px'
-                }}>
-                    {config.label}
-                </div>
-
-                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2rem', fontSize: '1.05rem' }}>
-                    {config.desc}
-                </p>
-
-                <div
-                    onClick={() => setDontShowAgain(!dontShowAgain)}
-                    style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: '0.6rem', marginBottom: '2.5rem', cursor: 'pointer',
-                        userSelect: 'none'
-                    }}
-                >
-                    <div style={{
-                        width: '22px', height: '22px', borderRadius: '5px',
-                        border: '2px solid var(--border)',
-                        background: dontShowAgain ? config.color : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                    }}>
-                        {dontShowAgain && <span style={{ color: '#000', fontSize: '14px', fontWeight: 900 }}>✓</span>}
-                    </div>
-                    <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Don't show again</span>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
-                    <button
-                        onClick={onUndo}
-                        style={{
-                            flex: 1, padding: '1rem', borderRadius: '14px',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-                            color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer',
-                            fontSize: '1rem'
-                        }}
-                    >
-                        Undo
-                    </button>
-                    <button
-                        onClick={() => onConfirm(dontShowAgain)}
-                        style={{
-                            flex: 1.8, padding: '1rem', borderRadius: '14px',
-                            background: config.color, border: 'none',
-                            color: '#000', fontWeight: 750, cursor: 'pointer',
-                            fontSize: '1rem',
-                            boxShadow: `0 8px 20px ${config.color}33`
-                        }}
-                    >
-                        OK
-                    </button>
-                </div>
-            </motion.div>
-        </motion.div>
-    );
-}
+};

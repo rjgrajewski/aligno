@@ -163,7 +163,7 @@ function CategoryBadge({ color, icon, count, label, onClick }) {
 }
 
 // --- Skills Modal ---
-function SkillsModal({ title, color, icon, skills, onRemove, onClearAll, onClose }) {
+function SkillsModal({ title, color, icon, skills, onSkillClick, onClearAll, onClose }) {
     const [hoverClear, setHoverClear] = useState(false);
 
     return (
@@ -245,13 +245,13 @@ function SkillsModal({ title, color, icon, skills, onRemove, onClearAll, onClose
                                         fontSize: '0.8rem', padding: '0.3rem 0.6rem',
                                         borderRadius: '999px', border: `1px solid ${color}`,
                                         background: 'var(--bg-elevated)', color,
-                                        cursor: onRemove ? 'pointer' : 'default',
+                                        cursor: onSkillClick ? 'pointer' : 'default',
                                         fontWeight: 500,
                                     }}
-                                    onClick={() => onRemove && onRemove(name)}
-                                    title={onRemove ? 'Tap to re-swipe' : ''}
+                                    onClick={() => onSkillClick && onSkillClick(name)}
+                                    title={onSkillClick ? 'Tap to open swipe card' : ''}
                                 >
-                                    {name} {onRemove && <span style={{ opacity: 0.6, fontSize: '0.9em', marginLeft: '0.2rem' }}>↺</span>}
+                                    {name}
                                 </motion.span>
                             ))}
                         </div>
@@ -265,7 +265,7 @@ function SkillsModal({ title, color, icon, skills, onRemove, onClearAll, onClose
 export default function SwipeSkillSelector({
     skills, onSwipeRight, onSwipeLeft, onSwipeDown, onSwipeUp,
     isMobile, selected, anti, highlighted, skipped,
-    onReSwipe, onClearCategory,
+    onSkillPreview, onClearCategory,
 }) {
     const [localSkipped, setLocalSkipped] = useState(new Set());
     const [exitDirections, setExitDirections] = useState({});
@@ -328,25 +328,25 @@ export default function SwipeSkillSelector({
         know: {
             title: 'Got it', color: 'var(--accent-cyan)', icon: '✓',
             skills: selected && highlighted ? [...selected].filter(s => !highlighted.has(s)) : [],
-            onRemove: (name) => { if (onReSwipe) onReSwipe(name, 'know'); setModalCategory(null); },
+            onSkillClick: (name) => { if (onSkillPreview) onSkillPreview(name, 'know'); setModalCategory(null); },
             onClearAll: () => { if (onClearCategory) onClearCategory('know'); setModalCategory(null); },
         },
         mustHave: {
             title: 'Show off', color: '#00e676', icon: '★',
             skills: highlighted ? [...highlighted] : [],
-            onRemove: (name) => { if (onReSwipe) onReSwipe(name, 'mustHave'); setModalCategory(null); },
+            onSkillClick: (name) => { if (onSkillPreview) onSkillPreview(name, 'mustHave'); setModalCategory(null); },
             onClearAll: () => { if (onClearCategory) onClearCategory('mustHave'); setModalCategory(null); },
         },
         block: {
             title: 'Avoid', color: 'var(--accent-red)', icon: '🚫',
             skills: anti ? [...anti] : [],
-            onRemove: (name) => { if (onReSwipe) onReSwipe(name, 'block'); setModalCategory(null); },
+            onSkillClick: (name) => { if (onSkillPreview) onSkillPreview(name, 'block'); setModalCategory(null); },
             onClearAll: () => { if (onClearCategory) onClearCategory('block'); setModalCategory(null); },
         },
         skip: {
             title: 'Skipped', color: '#888', icon: '✕',
             skills: skipped ? [...skipped] : [],
-            onRemove: (name) => { if (onReSwipe) onReSwipe(name, 'skip'); setModalCategory(null); },
+            onSkillClick: (name) => { if (onSkillPreview) onSkillPreview(name, 'skip'); setModalCategory(null); },
             onClearAll: () => { if (onClearCategory) onClearCategory('skip'); setModalCategory(null); },
         },
     };
@@ -413,4 +413,3 @@ export default function SwipeSkillSelector({
         </div>
     );
 }
-
