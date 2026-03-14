@@ -19,7 +19,7 @@ The frontend is a **Vite + React** SPA with a dark "Terminal Nights" aesthetic.
 
 **Stack:** React 18 · Framer Motion · React Router v6 · @react-pdf/renderer · d3-force · Sora / Inter / Outfit fonts
 
-**Directory:** `frontend-react/`
+**Directory:** `frontend/`
 
 ### Running locally
 
@@ -94,21 +94,21 @@ The backend uses a repository pattern (`backend/api/repository/`) with async `as
 
 ### Database Migrations
 
-SQL migrations live in `src/sql/migrations/`. Run them via:
+SQL migrations live in `services/sql/migrations/`. Run them via:
 
 ```bash
-python3 backend/run_migration.py src/sql/migrations/005_user_onboarding.sql
+python3 backend/run_migration.py services/sql/migrations/005_user_onboarding.sql
 ```
 
 ---
 
 ## Key Modules
 
-### Scout *[(docs)](./src/scout/README.md)*
+### Scout *[(docs)](./services/scout/README.md)*
 Playwright-based scraper that collects job offers from JustJoin.it and stores them in PostgreSQL. Runs automatically in AWS Fargate on a daily schedule (EventBridge).
 
-### Atlas *[(docs)](./src/atlas/README.md)* — Functional Beta
-AI-powered service (AWS Bedrock / Claude) that normalizes and deduplicates skill names across job offers (e.g. `"React.js"`, `"ReactJS"` → `"React"`). Deployed as an AWS Lambda triggered by Scout after each successful scrape. See [infra docs](./infra/README.md) for deployment.
+### Atlas *[(docs)](./services/atlas/README.md)* — Functional Beta
+AI-powered service (AWS Bedrock / Claude) that normalizes and deduplicates skill names across job offers (e.g. `"React.js"`, `"ReactJS"` → `"React"`). Deployed as an AWS Lambda triggered by Scout after each successful scrape. See [infra docs](./infra/lambda/README.md) for deployment.
 
 ### Job Search — Active
 React frontend + FastAPI backend that matches user skill profiles against job offers and ranks them by compatibility score.
@@ -125,7 +125,7 @@ Dashboard with market analytics: most popular skills, salary vs. technology, job
 
 ```
 flowjob/
-├─ frontend-react/              # Vite + React frontend
+├─ frontend/                    # Vite + React frontend
 │  ├─ src/
 │  │  ├─ pages/                 # Home, Register, Onboarding, CVBuilder, MyCV, JobBoard
 │  │  ├─ components/            # Navbar, JobCard, FilterBar, CVEditorTabs, CustomSelect, ...
@@ -143,7 +143,7 @@ flowjob/
 │     ├─ auth_utils.py          # JWT helpers
 │     ├─ routers/               # auth, skills, offers, users
 │     └─ repository/            # auth_repo, skills_repo, offers_repo, user_repo
-├─ src/
+├─ services/
 │  ├─ scout/                    # Web scraper (Playwright)
 │  ├─ atlas/                    # Skill normalization (AWS Bedrock)
 │  └─ sql/
@@ -187,7 +187,7 @@ See `.env.example` for the full template:
 
 - **Frontend + API proxy** — deployed to **Vercel** via `vercel.json` (Vite build + serverless `/api` rewrites).
 - **Scout (scraper)** — runs on **AWS Fargate** as a scheduled ECS task.
-- **Atlas (normalization)** — deployed as an **AWS Lambda** via SAM. See [infra/README.md](./infra/README.md).
+- **Atlas (normalization)** — deployed as an **AWS Lambda** via SAM. See [infra/lambda/README.md](./infra/lambda/README.md).
 - **Database** — **AWS RDS PostgreSQL 15.3**.
 
 ---

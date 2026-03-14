@@ -1,34 +1,24 @@
-__pycache__/
+# OS / IDE
 .DS_Store
-.mypy_cache/
 .cursor/
-.env
-.venv/
-venv/
-aws/
+.vscode/
+.cursorignore
 
-# Generated deployment/build artifacts
-aws/deployment/scraper/ecs-task-definition.json
-aws/deployment/scraper/task-role-policy.json
-aws/deployment/scraper/execution-role-policy.json
-.aws-sam/
-frontend-react/dist/
-
-# Personal data dumps
-rafal_data.json
-current_onboarding.json
-
+# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
+.mypy_cache/
+.venv/
+venv/
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-.vscode/
 lib/
 lib64/
 parts/
@@ -38,10 +28,27 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.cursorignore
+
+# Node
+node_modules/
+
+# Environment / secrets
+.env
+.env.old
+
+# Generated deployment/build artifacts
+.aws-sam/
+aws/
+frontend/dist/
+frontend/test-results/
+
+# Personal data dumps
+rafal_data.json
+current_onboarding.json
+
+# Misc
 query.sql
-tests/
 output.log
+*.log
 clear_skills.py
 check_tech_stack.py
-.env.old

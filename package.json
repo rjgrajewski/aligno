@@ -2,7 +2,7 @@
   "name": "flowjob",
   "private": true,
   "workspaces": [
-    "frontend-react"
+    "frontend"
   ],
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"python3 -m uvicorn backend.main:app --reload --port 8000\" \"npm run dev --workspace=flowjob-frontend\"",

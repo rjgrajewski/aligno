@@ -12,5 +12,5 @@
     ],
     "framework": "vite",
     "buildCommand": "npm run build --workspace=flowjob-frontend",
-    "outputDirectory": "frontend-react/dist"
+    "outputDirectory": "frontend/dist"
 }

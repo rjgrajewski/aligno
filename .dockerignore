@@ -27,9 +27,8 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Deployment files (nie potrzebne w obrazie)
-aws/
-deployment/
+# Deployment/infra files (nie potrzebne w obrazie)
+infra/
 
 # Documentation
 *.md

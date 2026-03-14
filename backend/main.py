@@ -31,6 +31,6 @@ app.include_router(users.router)
 app.include_router(stats.router)
 app.include_router(reference.router)
 
-frontend_dist = "frontend-react/dist"
+frontend_dist = "frontend/dist"
 if os.path.exists(frontend_dist):
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
