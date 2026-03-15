@@ -682,6 +682,7 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
             await init_tables(conn)
             await extract_distinct_skills(conn)
 
+        normalized_count = 0
         if stage in ['all', 'normalize']:
             # 2 & 3. Normalize Loop
             MAX_ITERATIONS = 200
@@ -698,6 +699,7 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
                 
                 if normalized_map:
                     await update_canonical_names(conn, normalized_map)
+                    normalized_count += len(normalized_map)
                 else:
                     logging.warning("Empty response from AI, stopping or skipping.")
                     break
@@ -706,10 +708,11 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
                               f"Stopping to prevent runaway costs.")
 
         if stage in ['all', 'deduplicate']:
-            # 5. Semantic Deduplication
-            await deduplicate_canonical_skills(conn, bedrock)
-            # 5b. Collision report (diagnostic — does not modify data)
-            await detect_and_report_collisions(conn)
+            if stage == 'deduplicate' or normalized_count > 0:
+                await deduplicate_canonical_skills(conn, bedrock)
+                await detect_and_report_collisions(conn)
+            else:
+                logging.info("No new skills normalized — skipping deduplication.")
                  
         if stage in ['all', 'link']:
             # 4. Link
