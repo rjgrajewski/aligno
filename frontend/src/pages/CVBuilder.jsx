@@ -38,28 +38,35 @@ export default function CVBuilder() {
     useEffect(() => { skippedRef.current = skipped; }, [skipped]);
 
     const [saved, setSaved] = useState('');
+    const [loadError, setLoadError] = useState(null);
     const saveTimeout = useRef(null);
     const initialLoadDone = useRef(false);
 
     const containerRef = useRef(null);
 
-    useEffect(() => {
-        let mounted = true;
-        const load = async () => {
-            const user = auth.getUser();
-            if (!user) return;
-            const cv = await api.getUserCV(user.id);
-            if (!mounted) return;
-            setSelected(new Set(cv.skills || []));
-            setAnti(new Set(cv.antiSkills || []));
-            setHighlighted(new Set(cv.highlightedSkills || []));
-            setSkipped(new Set(cv.skippedSkills || []));
-            setConfirmedTutorials(cv.confirmedTutorials || []);
-            setTimeout(() => { if (mounted) initialLoadDone.current = true; }, 100);
-        };
-        load();
-        return () => { mounted = false; };
+    const loadUserCV = useCallback(async (mounted = { current: true }) => {
+        const user = auth.getUser();
+        if (!user) return;
+        setLoadError(null);
+        const cv = await api.getUserCV(user.id);
+        if (!mounted.current) return;
+        if (!cv.loadSucceeded) {
+            setLoadError(cv.error || 'Failed to load your skills');
+            return;
+        }
+        setSelected(new Set(cv.skills || []));
+        setAnti(new Set(cv.antiSkills || []));
+        setHighlighted(new Set(cv.highlightedSkills || []));
+        setSkipped(new Set(cv.skippedSkills || []));
+        setConfirmedTutorials(cv.confirmedTutorials || []);
+        setTimeout(() => { if (mounted.current) initialLoadDone.current = true; }, 100);
     }, []);
+
+    useEffect(() => {
+        const mounted = { current: true };
+        loadUserCV(mounted);
+        return () => { mounted.current = false; };
+    }, [loadUserCV]);
 
     useEffect(() => {
         if (!initialLoadDone.current) return;
@@ -307,7 +314,20 @@ export default function CVBuilder() {
                 )}
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 150px)', width: '100%' }} ref={containerRef}>
-                    {loading ? (
+                    {loadError ? (
+                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                            <p style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>⚠️</p>
+                            <p style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--accent-red)' }}>Could not load your skills</p>
+                            <p style={{ fontSize: '0.9rem', marginBottom: '1.25rem' }}>{loadError}</p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => loadUserCV()}
+                                style={{ padding: '0.6rem 1.5rem', fontSize: '0.95rem', fontWeight: 600, borderRadius: '8px' }}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    ) : loading ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
                             <div className="pulse" style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
                         </div>

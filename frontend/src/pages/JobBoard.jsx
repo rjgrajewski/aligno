@@ -16,36 +16,43 @@ export default function JobBoard() {
     const [confirmedTutorials, setConfirmedTutorials] = useState([]);
     const [previewSkill, setPreviewSkill] = useState(null);
     const [pendingAction, setPendingAction] = useState(null);
+    const [skillsLoadError, setSkillsLoadError] = useState(null);
 
     const initialLoadDone = useRef(false);
 
-    // Filters
     const [locationFilter, setLocationFilter] = useState('');
     const [operatingModeFilter, setOperatingModeFilter] = useState('');
     const [employmentTypeFilter, setEmploymentTypeFilter] = useState('');
 
     const [visibleCount, setVisibleCount] = useState(30);
 
-    // Reset pagination when filters or jobs list changes
     useEffect(() => {
         setVisibleCount(30);
     }, [locationFilter, operatingModeFilter, employmentTypeFilter, jobs.length]);
 
-    useEffect(() => {
-        const loadUserSkills = async () => {
-            const user = auth.getUser();
-            if (user) {
-                const cv = await api.getUserCV(user.id);
-                setUserSkills(new Set(cv.skills || []));
-                setAntiSkills(new Set(cv.antiSkills || []));
-                setHighlightedSkills(new Set(cv.highlightedSkills || []));
-                setSkippedSkills(new Set(cv.skippedSkills || []));
-                setConfirmedTutorials(cv.confirmedTutorials || []);
-                setTimeout(() => { initialLoadDone.current = true; }, 100);
-            }
-        };
-        loadUserSkills();
+    const loadUserSkills = useCallback(async (mounted = { current: true }) => {
+        const user = auth.getUser();
+        if (!user) return;
+        setSkillsLoadError(null);
+        const cv = await api.getUserCV(user.id);
+        if (!mounted.current) return;
+        if (!cv.loadSucceeded) {
+            setSkillsLoadError(cv.error || 'Failed to load your skills');
+            return;
+        }
+        setUserSkills(new Set(cv.skills || []));
+        setAntiSkills(new Set(cv.antiSkills || []));
+        setHighlightedSkills(new Set(cv.highlightedSkills || []));
+        setSkippedSkills(new Set(cv.skippedSkills || []));
+        setConfirmedTutorials(cv.confirmedTutorials || []);
+        setTimeout(() => { if (mounted.current) initialLoadDone.current = true; }, 100);
     }, []);
+
+    useEffect(() => {
+        const mounted = { current: true };
+        loadUserSkills(mounted);
+        return () => { mounted.current = false; };
+    }, [loadUserSkills]);
 
     // Initial server load sort config
     const [initialSortConfig, setInitialSortConfig] = useState([]);
@@ -216,7 +223,20 @@ export default function JobBoard() {
             </AnimatePresence>
             <SparklesBg />
             <div className="container" style={{ maxWidth: '860px', padding: '2rem 1.5rem', position: 'relative', zIndex: 1 }}>
-                {/* Page header */}
+                {skillsLoadError && (
+                    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--accent-red)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                        <p style={{ color: 'var(--accent-red)', fontSize: '0.9rem', fontWeight: 500, margin: 0 }}>
+                            ⚠️ Could not load your skills — job matching may be inaccurate. {skillsLoadError}
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => loadUserSkills()}
+                            style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', fontWeight: 600, borderRadius: '6px', whiteSpace: 'nowrap' }}
+                        >
+                            Retry
+                        </button>
+                    </div>
+                )}
                 <div style={styles.pageHeader}>
                     <div>
                         <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.25rem' }}>Job Offers</h1>

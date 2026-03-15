@@ -84,16 +84,17 @@ export const api = {
         return res.json();
     },
     getUserCV: async (userId) => {
-        if (!userId) return { skills: [], antiSkills: [], highlightedSkills: [], skippedSkills: [], confirmedTutorials: [] };
+        if (!userId) return { skills: [], antiSkills: [], highlightedSkills: [], skippedSkills: [], confirmedTutorials: [], loadSucceeded: false, error: 'No user ID' };
         try {
             const res = handleUnauthorized(await fetch(`${BASE}/users/${userId}/skills`, {
                 ...authFetchOpts(),
             }));
-            if (!res.ok) throw new Error('Failed to fetch user skills');
-            return await res.json();
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return { ...data, loadSucceeded: true };
         } catch (e) {
             console.error(e);
-            return { skills: [], antiSkills: [], highlightedSkills: [], skippedSkills: [], confirmedTutorials: [] };
+            return { data: null, loadSucceeded: false, error: e.message };
         }
     },
     getStats: async () => {
