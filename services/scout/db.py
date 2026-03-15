@@ -22,21 +22,18 @@ def get_database_dsn() -> str:
     aws_username = os.getenv('AWS_DB_USERNAME')
     aws_password = os.getenv('AWS_DB_PASSWORD')
     
-    # Attempt to load credentials from AWS Secrets Manager
+    # Load credentials from AWS Secrets Manager
     secret_arn = os.getenv('SECRET_ARN')
     if secret_arn:
-        try:
-            logging.info(f"Fetching credentials from Secrets Manager: {secret_arn}")
-            client = boto3.client('secretsmanager', region_name=os.getenv('AWS_REGION', 'eu-central-1'))
-            response = client.get_secret_value(SecretId=secret_arn)
-            if 'SecretString' in response:
-                secret = json.loads(response['SecretString'])
-                aws_username = secret.get('username', aws_username)
-                aws_password = secret.get('password', aws_password)
-                aws_endpoint = secret.get('host', aws_endpoint)
-                aws_db_name = secret.get('dbname', aws_db_name)
-        except Exception as e:
-            logging.error(f"Failed to retrieve secret from Secrets Manager: {e}")
+        logging.info(f"Fetching credentials from Secrets Manager: {secret_arn}")
+        client = boto3.client('secretsmanager', region_name=os.getenv('AWS_REGION', 'eu-central-1'))
+        response = client.get_secret_value(SecretId=secret_arn)
+        if 'SecretString' in response:
+            secret = json.loads(response['SecretString'])
+            aws_username = secret.get('username', aws_username)
+            aws_password = secret.get('password', aws_password)
+            aws_endpoint = secret.get('host', aws_endpoint)
+            aws_db_name = secret.get('dbname', aws_db_name)
     
     if not all([aws_endpoint, aws_username, aws_password, aws_db_name]):
         raise ValueError("Missing AWS configuration. Please set SECRET_ARN, or AWS_DB_ENDPOINT, AWS_DB_USERNAME, AWS_DB_PASSWORD, and AWS_DB_NAME.")
