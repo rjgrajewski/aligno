@@ -29,7 +29,7 @@ async def register(body: RegisterRequest, response: Response, repo: AuthReposito
         user_info = await repo.create_user(body.email, body.password)
         token = create_access_token(str(user_info["id"]), user_info["email"])
         set_auth_cookie(response, token)
-        return {**user_info, "token": token}
+        return user_info
     except asyncpg.UniqueViolationError:
         raise HTTPException(status_code=400, detail="This email address is already registered.")
     except ValueError as ve:
@@ -47,7 +47,7 @@ async def login(body: LoginRequest, response: Response, repo: AuthRepository = D
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token(str(user_info["id"]), user_info["email"])
     set_auth_cookie(response, token)
-    return {**user_info, "token": token}
+    return user_info
 
 @router.post("/logout")
 async def logout(response: Response):
