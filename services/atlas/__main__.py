@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
     
     if args.command == "normalize":
-        asyncio.run(normalize_main(stage=args.stage, clear_first=args.clear, clear_all=args.clear_all))
+        asyncio.run(normalize_main(stage=args.stage, clear_all=args.clear_all))
     else:
         parser.print_help()
 
