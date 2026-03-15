@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from backend.database import get_db_pool
 from backend.api.repository.auth_repo import AuthRepository
@@ -5,6 +7,8 @@ from backend.api.auth_utils import create_access_token, set_auth_cookie, clear_a
 from backend.models import RegisterRequest, LoginRequest
 import asyncpg
 import re
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -36,9 +40,10 @@ async def register(body: RegisterRequest, response: Response, repo: AuthReposito
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
+        logger.exception("Registration failed for email=%s", body.email)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to save user. Ensure migration 003 has been applied (password_hash column). Details: {str(e)}",
+            detail="Registration failed. Please try again later.",
         )
 
 @router.post("/login")

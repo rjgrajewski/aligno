@@ -28,7 +28,8 @@ async def get_skills(
     try:
         return await repo.get_user_skills(user_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("get_skills failed for user_id=%s", user_id)
+        raise HTTPException(status_code=500, detail="Failed to retrieve skills. Please try again later.")
 
 @router.post("/{user_id}/skills", response_model=UserSkillsResponse)
 async def save_skills(
@@ -50,10 +51,11 @@ async def save_skills(
             confirmed_tutorials=body.confirmedTutorials
         )
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("save_skills validation error for user_id=%s: %s", user_id, e)
+        raise HTTPException(status_code=422, detail="Invalid skill data. Please check your input.")
     except Exception as e:
-        logger.exception("save_skills failed for user_id=%s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("save_skills failed for user_id=%s", user_id)
+        raise HTTPException(status_code=500, detail="Failed to save skills. Please try again later.")
 
 @router.post("/{user_id}/onboarding")
 async def save_onboarding(
@@ -68,10 +70,11 @@ async def save_onboarding(
         await repo.save_onboarding_full(user_id, body)
         return {"status": "success"}
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("Onboarding validation error for user_id=%s: %s", user_id, e)
+        raise HTTPException(status_code=422, detail="Invalid onboarding data. Please check your input.")
     except Exception as e:
-        logger.exception("Error saving onboarding for user_id=%s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error saving onboarding for user_id=%s", user_id)
+        raise HTTPException(status_code=500, detail="Failed to save onboarding data. Please try again later.")
 
 @router.get("/{user_id}/onboarding")
 async def get_onboarding(
@@ -91,5 +94,5 @@ async def get_onboarding(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Error fetching onboarding for user_id=%s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error fetching onboarding for user_id=%s", user_id)
+        raise HTTPException(status_code=500, detail="Failed to retrieve onboarding data. Please try again later.")
