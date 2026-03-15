@@ -47,6 +47,9 @@ frontend/test-results/
 rafal_data.json
 current_onboarding.json
 
+# Code reviews
+code_reviews/
+
 # Misc
 query.sql
 output.log

@@ -15,6 +15,17 @@ function getCsrfToken() {
     return match ? decodeURIComponent(match[2]) : '';
 }
 
+let csrfReady = null;
+async function ensureCsrfToken() {
+    if (getCsrfToken()) return;
+    if (!csrfReady) {
+        csrfReady = fetch(`${BASE}/csrf-token`, { credentials: 'include' })
+            .catch(() => {})
+            .finally(() => { csrfReady = null; });
+    }
+    await csrfReady;
+}
+
 function authFetchOpts(extra = {}) {
     return {
         credentials: 'include',
@@ -63,6 +74,7 @@ export const api = {
     },
     saveUserCV: async (userId, cvData) => {
         if (!userId) return { success: false };
+        await ensureCsrfToken();
         const res = handleUnauthorized(await fetch(`${BASE}/users/${userId}/skills`, {
             method: 'POST',
             ...authFetchOpts(),
@@ -94,6 +106,7 @@ export const api = {
 export const auth = {
     isAuthenticated: () => localStorage.getItem('flowjob_user') !== null,
     async login(email, password) {
+        await ensureCsrfToken();
         let res;
         try {
             res = await fetchWithTimeout(`${BASE}/login`, {
@@ -119,6 +132,7 @@ export const auth = {
         return user;
     },
     async register(userData) {
+        await ensureCsrfToken();
         let res;
         try {
             res = await fetchWithTimeout(`${BASE}/register`, {
@@ -147,6 +161,7 @@ export const auth = {
         return user;
     },
     logout: async () => {
+        await ensureCsrfToken();
         try {
             await fetch(`${BASE}/logout`, { method: 'POST', ...authFetchOpts() });
         } catch { /* server unreachable is fine during logout */ }
@@ -176,6 +191,7 @@ export const auth = {
         return user?.onboarding_completed === true || localStorage.getItem('flowjob_onboarding_done') === 'true';
     },
     async completeOnboarding(profileData) {
+        await ensureCsrfToken();
         const user = this.getUser();
         if (!user?.id) throw new Error('No authenticated user found.');
 

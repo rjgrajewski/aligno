@@ -23,10 +23,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         csrf_cookie = request.cookies.get(CSRF_COOKIE_NAME)
 
         if request.method not in SAFE_METHODS:
-            if csrf_cookie:
-                csrf_header = request.headers.get(CSRF_HEADER_NAME)
-                if not csrf_header or not secrets.compare_digest(csrf_header, csrf_cookie):
-                    raise HTTPException(status_code=403, detail="CSRF validation failed")
+            csrf_header = request.headers.get(CSRF_HEADER_NAME)
+            if not csrf_cookie or not csrf_header or \
+                    not secrets.compare_digest(csrf_header, csrf_cookie):
+                raise HTTPException(status_code=403, detail="CSRF validation failed")
 
         response = await call_next(request)
 

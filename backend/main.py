@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import Response
 from contextlib import asynccontextmanager
 from backend.database import init_db_pool, close_db_pool
 from backend.api.routers import auth, skills, offers, users, stats, reference
@@ -25,6 +26,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/csrf-token")
+async def csrf_token():
+    return Response(status_code=204)
 
 app.include_router(auth.router)
 app.include_router(skills.router)
