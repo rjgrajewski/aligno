@@ -11,6 +11,7 @@
         }
     ],
     "framework": "vite",
+    "installCommand": "npm install",
     "buildCommand": "npm run build --workspace=flowjob-frontend",
     "outputDirectory": "frontend/dist"
 }
