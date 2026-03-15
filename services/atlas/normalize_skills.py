@@ -661,18 +661,38 @@ async def link_offers_to_skills(conn: asyncpg.Connection):
     logging.info("✅ Linking completed.")
 
 async def clear_skills_tables(conn: asyncpg.Connection):
-    """Clear skills and all tables that reference it (offer_skills, user_skills)."""
-    logging.info("🗑️ Clearing skills table and dependent tables (offer_skills, user_skills)...")
+    """Clear offer_skills and skills, but preserve user_skills.
+
+    Skills referenced by user_skills are kept so that user preferences
+    survive a re-normalization run.
+    """
+    logging.info("🗑️ Clearing offer_skills and unreferenced skills (preserving user_skills)...")
+    await conn.execute("TRUNCATE offer_skills")
+    deleted = await conn.execute(
+        "DELETE FROM skills WHERE uuid NOT IN (SELECT DISTINCT skill_id FROM user_skills)"
+    )
+    logging.info(f"✅ offer_skills truncated; {deleted} skill rows removed (user-referenced skills kept).")
+
+
+async def clear_all_tables(conn: asyncpg.Connection):
+    """DEV ONLY: Full destructive reset including user_skills.
+
+    This uses TRUNCATE CASCADE and wipes user preferences.
+    Must never be called from Lambda — only from CLI.
+    """
+    logging.warning("⚠️  DESTRUCTIVE: Clearing ALL tables including user_skills!")
     await conn.execute("TRUNCATE skills CASCADE")
-    logging.info("✅ Skills and dependent tables cleared.")
+    logging.info("✅ All skill-related tables cleared (including user_skills).")
 
 
-async def run_normalization_process(stage: str = 'all', clear_first: bool = False):
+async def run_normalization_process(stage: str = 'all', clear_first: bool = False, clear_all: bool = False):
     dsn = get_database_dsn()
     conn = await asyncpg.connect(dsn=dsn)
     
     try:
-        if clear_first:
+        if clear_all:
+            await clear_all_tables(conn)
+        elif clear_first:
             await clear_skills_tables(conn)
 
         bedrock = boto3.client('bedrock-runtime', region_name=os.getenv('AWS_REGION', 'eu-central-1'))
@@ -721,15 +741,16 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
     finally:
         await conn.close()
 
-def main(stage: str = 'all', clear_first: bool = False):
+def main(stage: str = 'all', clear_first: bool = False, clear_all: bool = False):
     import asyncio
-    asyncio.run(run_normalization_process(stage=stage, clear_first=clear_first))
+    asyncio.run(run_normalization_process(stage=stage, clear_first=clear_first, clear_all=clear_all))
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('stage', nargs='?', default='all', help='Stage to run')
-    parser.add_argument('--clear', action='store_true', help='Clear tables first')
+    parser.add_argument('--clear', action='store_true', help='Clear offer_skills + unreferenced skills (safe)')
+    parser.add_argument('--clear-all', action='store_true', help='DEV ONLY: Full destructive reset including user_skills')
     args = parser.parse_args()
     
-    main(stage=args.stage, clear_first=args.clear)
+    main(stage=args.stage, clear_first=args.clear, clear_all=args.clear_all)
