@@ -13,6 +13,7 @@ This file provides context for any AI coding assistant working on this repositor
 | Backend (FastAPI) | 8000 | `npm run dev:backend` |
 | Frontend (Vite React) | 5173 | `npm run dev:frontend` |
 | Both together | 8000 + 5173 | `npm run dev` |
+| Both together in local WiFi network | 8000 + 5173 | `npm run dev:wifi` |
 
 ## Running
 
