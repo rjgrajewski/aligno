@@ -4,7 +4,9 @@ import datetime
 from fastapi import Depends, HTTPException, Request, Response
 from typing import Optional
 
-JWT_SECRET = os.getenv("JWT_SECRET", "flowjob-dev-secret-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable is required")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 72
 AUTH_COOKIE_NAME = "flowjob_auth"
