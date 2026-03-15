@@ -35,8 +35,10 @@ if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
   exit 1
 fi
 
-# DATABASE_URL: from .env or built from AWS_DB_*
-if [ -n "$DATABASE_URL" ]; then
+# DATABASE_URL: skip when SECRET_ARN is set (Lambda fetches credentials at runtime)
+if [ -n "$SECRET_ARN" ]; then
+  DATABASE_URL=""
+elif [ -n "$DATABASE_URL" ]; then
   :
 elif [ -n "$AWS_DB_ENDPOINT" ] && [ -n "$AWS_DB_USERNAME" ] && [ -n "$AWS_DB_PASSWORD" ] && [ -n "$AWS_DB_NAME" ]; then
   PASS_ENC=$(python3 -c 'import urllib.parse, os; print(urllib.parse.quote_plus(os.environ.get("AWS_DB_PASSWORD", "")))')
