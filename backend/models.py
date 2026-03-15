@@ -3,6 +3,8 @@ from typing import List, Optional
 from datetime import datetime, date
 from uuid import UUID
 
+MAX_PROFILE_PICTURE_LENGTH = 500_000
+
 class Skill(BaseModel):
     id: UUID
     name: str # canonical_skill_name or original_skill_name
@@ -101,7 +103,8 @@ class UserProfile(BaseModel):
     contact_email: Optional[str] = None
     location: Optional[str] = None
     bio: Optional[str] = None
-    profile_picture: Optional[str] = None
+    # Large inline base64 payloads can bloat requests and the TEXT column in Postgres.
+    profile_picture: Optional[str] = Field(default=None, max_length=MAX_PROFILE_PICTURE_LENGTH)
     data_processing_clause: Optional[str] = None
 
 class OnboardingRequest(BaseModel):
