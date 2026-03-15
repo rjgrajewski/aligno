@@ -29,6 +29,21 @@ class AuthRepository:
                 "onboarding_completed": row["onboarding_completed"]
             }
 
+    async def get_user_by_id(self, user_id: int) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT id, email, full_name, onboarding_completed FROM users WHERE id = $1",
+                user_id,
+            )
+            if not row:
+                return None
+            return {
+                "id": row["id"],
+                "email": row["email"],
+                "name": row["full_name"] or row["email"].split("@")[0],
+                "onboarding_completed": row["onboarding_completed"],
+            }
+
     async def authenticate_user(self, email: str, password: str) -> dict:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from backend.database import get_db_pool
 from backend.api.repository.auth_repo import AuthRepository
-from backend.api.auth_utils import create_access_token, set_auth_cookie, clear_auth_cookie
+from backend.api.auth_utils import create_access_token, set_auth_cookie, clear_auth_cookie, get_current_user_id
 from backend.models import RegisterRequest, LoginRequest
 import asyncpg
 import re
@@ -29,7 +29,8 @@ async def register(body: RegisterRequest, response: Response, repo: AuthReposito
         user_info = await repo.create_user(body.email, body.password)
         token = create_access_token(str(user_info["id"]), user_info["email"])
         set_auth_cookie(response, token)
-        return {**user_info, "token": token}
+        return {"id": user_info["id"], "email": user_info["email"],
+                "name": user_info["name"], "onboarding_completed": user_info["onboarding_completed"]}
     except asyncpg.UniqueViolationError:
         raise HTTPException(status_code=400, detail="This email address is already registered.")
     except ValueError as ve:
@@ -47,7 +48,15 @@ async def login(body: LoginRequest, response: Response, repo: AuthRepository = D
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token(str(user_info["id"]), user_info["email"])
     set_auth_cookie(response, token)
-    return {**user_info, "token": token}
+    return {"id": user_info["id"], "email": user_info["email"],
+            "name": user_info["name"], "onboarding_completed": user_info["onboarding_completed"]}
+
+@router.get("/me")
+async def me(user_id: str = Depends(get_current_user_id), repo: AuthRepository = Depends(get_auth_repo)):
+    user = await repo.get_user_by_id(int(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 @router.post("/logout")
 async def logout(response: Response):

@@ -53,13 +53,8 @@ def decode_access_token(token: str) -> dict:
 
 
 def get_current_user_id(request: Request) -> str:
-    """Extract user_id from the HttpOnly auth cookie, with Bearer header as fallback."""
+    """Extract user_id from the HttpOnly auth cookie."""
     token = request.cookies.get(AUTH_COOKIE_NAME)
-
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ", 1)[1]
 
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication")
