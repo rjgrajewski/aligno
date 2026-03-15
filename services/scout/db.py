@@ -27,12 +27,7 @@ def get_database_dsn() -> str:
     if secret_arn:
         try:
             logging.info(f"Fetching credentials from Secrets Manager: {secret_arn}")
-            session = boto3.Session(
-                aws_access_key_id=os.getenv('AWS_BEDROCK_ACCESS_KEY') or os.getenv('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.getenv('AWS_BEDROCK_SECRET_ACCESS_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY'),
-                region_name=os.getenv('AWS_REGION', 'eu-central-1')
-            )
-            client = session.client(service_name='secretsmanager')
+            client = boto3.client('secretsmanager', region_name=os.getenv('AWS_REGION', 'eu-central-1'))
             response = client.get_secret_value(SecretId=secret_arn)
             if 'SecretString' in response:
                 secret = json.loads(response['SecretString'])
