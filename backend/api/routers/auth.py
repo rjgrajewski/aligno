@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from backend.database import get_db_pool
 from backend.api.repository.auth_repo import AuthRepository
-from backend.api.auth_utils import create_access_token
+from backend.api.auth_utils import create_access_token, set_auth_cookie, clear_auth_cookie
 from backend.models import RegisterRequest, LoginRequest
 import asyncpg
 import re
@@ -21,13 +21,14 @@ def validate_password(password: str) -> bool:
     return True
 
 @router.post("/register")
-async def register(body: RegisterRequest, repo: AuthRepository = Depends(get_auth_repo)):
+async def register(body: RegisterRequest, response: Response, repo: AuthRepository = Depends(get_auth_repo)):
     try:
         if not validate_password(body.password):
             raise ValueError("Password does not meet security requirements.")
             
         user_info = await repo.create_user(body.email, body.password)
         token = create_access_token(str(user_info["id"]), user_info["email"])
+        set_auth_cookie(response, token)
         return {**user_info, "token": token}
     except asyncpg.UniqueViolationError:
         raise HTTPException(status_code=400, detail="This email address is already registered.")
@@ -40,9 +41,15 @@ async def register(body: RegisterRequest, repo: AuthRepository = Depends(get_aut
         )
 
 @router.post("/login")
-async def login(body: LoginRequest, repo: AuthRepository = Depends(get_auth_repo)):
+async def login(body: LoginRequest, response: Response, repo: AuthRepository = Depends(get_auth_repo)):
     user_info = await repo.authenticate_user(body.email, body.password)
     if not user_info:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token(str(user_info["id"]), user_info["email"])
+    set_auth_cookie(response, token)
     return {**user_info, "token": token}
+
+@router.post("/logout")
+async def logout(response: Response):
+    clear_auth_cookie(response)
+    return {"status": "ok"}

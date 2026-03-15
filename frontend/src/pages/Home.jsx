@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import './Home.css';
 import { symbols } from './Home.constants';
 import { auth } from '../services/api.js';
+import Footer from '../components/Footer.jsx';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 40 },
@@ -125,8 +126,8 @@ export default function Home() {
                 </div>
             </section>
 
-            <footer style={{ borderTop: '1px solid var(--border)', padding: '2.5rem 0', background: 'var(--bg-default)', zIndex: 10 }}>
-                <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem' }}>
+            <div style={{ background: 'var(--bg-default)', zIndex: 10 }}>
+                <div className="container" style={{ display: 'flex', justifyContent: 'center', paddingTop: '1.5rem' }}>
                     <Link to="/story" style={{
                         color: 'var(--text-primary)',
                         textDecoration: 'none',
@@ -143,12 +144,9 @@ export default function Home() {
                     }} onMouseOver={e => { e.target.style.borderColor = 'var(--accent-cyan)'; e.target.style.color = 'var(--accent-cyan)' }} onMouseOut={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-primary)' }}>
                         Read the Story →
                     </Link>
-                    <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem', textAlign: 'center' }}>
-                        <span style={{ opacity: 0.6 }}>Proudly built by Rafal Grajewski.</span><br />
-                        © 2026 <strong style={{ color: 'var(--text-primary)' }}>flowjob</strong>.
-                    </p>
                 </div>
-            </footer>
+            </div>
+            <Footer />
         </div>
     );
 }

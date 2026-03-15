@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import './Story.css';
 import { DatabaseIcon } from '../components/Icons';
 import { archNodes, symbols } from './Story.constants';
+import Footer from '../components/Footer.jsx';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 40 },
@@ -1137,15 +1138,7 @@ export default function Story() {
                 </div>
             </section>
 
-            {/* FOOTER */}
-            <footer className="footer">
-                <div className="container" style={{ textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        <span style={{ opacity: 0.6 }}>Proudly built by Rafal Grajewski.</span><br />
-                        © 2026 <strong style={{ color: 'var(--text-primary)' }}>flowjob</strong>.
-                    </p>
-                </div>
-            </footer>
+            <Footer />
         </div >
     );
 }

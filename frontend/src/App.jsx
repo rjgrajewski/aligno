@@ -7,7 +7,10 @@ import Onboarding from './pages/Onboarding.jsx';
 import CVBuilder from './pages/CVBuilder.jsx';
 import MyCV from './pages/MyCV.jsx';
 import JobBoard from './pages/JobBoard.jsx';
+import Privacy from './pages/Privacy.jsx';
+import Cookies from './pages/Cookies.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
+import CookieConsent from './components/CookieConsent.jsx';
 import { auth } from './services/api.js';
 
 function ProtectedRoute({ children }) {
@@ -36,9 +39,12 @@ export default function App() {
                     <Route path="/my-skills" element={<OnboardingGate><CVBuilder /></OnboardingGate>} />
                     <Route path="/my-cv" element={<OnboardingGate><MyCV /></OnboardingGate>} />
                     <Route path="/jobs" element={<OnboardingGate><JobBoard /></OnboardingGate>} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/cookies" element={<Cookies />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
+            <CookieConsent />
         </BrowserRouter>
     );
 }

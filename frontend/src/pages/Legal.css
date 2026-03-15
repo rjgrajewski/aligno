@@ -1,0 +1,134 @@
+.legal-section {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.legal-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.legal-heading {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+}
+
+.legal-subheading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.legal-text {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.legal-text:last-child {
+    margin-bottom: 0;
+}
+
+.legal-text code {
+    background: rgba(0, 229, 255, 0.08);
+    color: var(--accent-cyan);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: monospace;
+}
+
+.legal-link {
+    color: var(--accent-cyan);
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+
+.legal-link:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.legal-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+}
+
+.legal-list li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.legal-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.65em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    opacity: 0.6;
+}
+
+.legal-list li strong {
+    color: var(--text-primary);
+}
+
+.legal-table-wrapper {
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.legal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.legal-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+}
+
+.legal-table td {
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+}
+
+.legal-table tr:last-child td {
+    border-bottom: none;
+}
+
+.legal-table code {
+    background: rgba(0, 229, 255, 0.08);
+    color: var(--accent-cyan);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: monospace;
+}

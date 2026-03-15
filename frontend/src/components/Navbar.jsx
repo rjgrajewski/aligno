@@ -15,8 +15,8 @@ export default function Navbar() {
         return () => clearInterval(interval);
     }, []);
 
-    const handleLogout = () => {
-        auth.logout();
+    const handleLogout = async () => {
+        await auth.logout();
         setUser(null);
         setIsMobileMenuOpen(false);
         navigate('/');

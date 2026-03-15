@@ -1,12 +1,14 @@
 import os
 import jwt
 import datetime
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Response
 from typing import Optional
 
 JWT_SECRET = os.getenv("JWT_SECRET", "flowjob-dev-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 72
+AUTH_COOKIE_NAME = "flowjob_auth"
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 
 
 def create_access_token(user_id: str, email: str) -> str:
@@ -19,6 +21,28 @@ def create_access_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
+def set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="strict",
+        max_age=JWT_EXPIRATION_HOURS * 3600,
+        path="/",
+    )
+
+
+def clear_auth_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="strict",
+        path="/",
+    )
+
+
 def decode_access_token(token: str) -> dict:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -29,11 +53,17 @@ def decode_access_token(token: str) -> dict:
 
 
 def get_current_user_id(request: Request) -> str:
-    """FastAPI dependency that extracts and validates user_id from the JWT Bearer token."""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    token = auth_header.split(" ", 1)[1]
+    """Extract user_id from the HttpOnly auth cookie, with Bearer header as fallback."""
+    token = request.cookies.get(AUTH_COOKIE_NAME)
+
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authentication")
+
     payload = decode_access_token(token)
     user_id = payload.get("sub")
     if not user_id:

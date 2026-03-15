@@ -10,17 +10,25 @@ function parseDetail(detail) {
     return null;
 }
 
-function getAuthHeaders() {
-    const token = localStorage.getItem('flowjob_token');
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    return headers;
+function getCsrfToken() {
+    const match = document.cookie.match(/(^|;\s*)flowjob_csrf=([^;]*)/);
+    return match ? decodeURIComponent(match[2]) : '';
+}
+
+function authFetchOpts(extra = {}) {
+    return {
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken(),
+            ...extra,
+        },
+    };
 }
 
 function handleUnauthorized(res) {
     if (res.status === 401) {
         localStorage.removeItem('flowjob_user');
-        localStorage.removeItem('flowjob_token');
         localStorage.removeItem('flowjob_profile');
         localStorage.removeItem('flowjob_onboarding_done');
         window.location.href = '/get-started';
@@ -57,7 +65,7 @@ export const api = {
         if (!userId) return { success: false };
         const res = handleUnauthorized(await fetch(`${BASE}/users/${userId}/skills`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            ...authFetchOpts(),
             body: JSON.stringify(cvData)
         }));
         if (!res.ok) throw new Error('Failed to save skills');
@@ -67,7 +75,7 @@ export const api = {
         if (!userId) return { skills: [], antiSkills: [], highlightedSkills: [], skippedSkills: [], confirmedTutorials: [] };
         try {
             const res = handleUnauthorized(await fetch(`${BASE}/users/${userId}/skills`, {
-                headers: getAuthHeaders(),
+                ...authFetchOpts(),
             }));
             if (!res.ok) throw new Error('Failed to fetch user skills');
             return await res.json();
@@ -90,7 +98,7 @@ export const auth = {
         try {
             res = await fetchWithTimeout(`${BASE}/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                ...authFetchOpts(),
                 body: JSON.stringify({ email, password }),
             });
         } catch (e) {
@@ -107,7 +115,6 @@ export const auth = {
             throw new Error(msg);
         }
         const user = await res.json();
-        if (user.token) localStorage.setItem('flowjob_token', user.token);
         localStorage.setItem('flowjob_user', JSON.stringify(user));
         return user;
     },
@@ -116,7 +123,7 @@ export const auth = {
         try {
             res = await fetchWithTimeout(`${BASE}/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                ...authFetchOpts(),
                 body: JSON.stringify({
                     email: userData.email,
                     password: userData.password,
@@ -136,13 +143,14 @@ export const auth = {
             throw new Error(msg);
         }
         const user = await res.json();
-        if (user.token) localStorage.setItem('flowjob_token', user.token);
         localStorage.setItem('flowjob_user', JSON.stringify(user));
         return user;
     },
-    logout: () => {
+    logout: async () => {
+        try {
+            await fetch(`${BASE}/logout`, { method: 'POST', ...authFetchOpts() });
+        } catch { /* server unreachable is fine during logout */ }
         localStorage.removeItem('flowjob_user');
-        localStorage.removeItem('flowjob_token');
         localStorage.removeItem('flowjob_profile');
         localStorage.removeItem('flowjob_onboarding_done');
     },
@@ -151,7 +159,7 @@ export const auth = {
         if (!userId) return null;
         try {
             const res = handleUnauthorized(await fetch(`${BASE}/users/${userId}/onboarding`, {
-                headers: getAuthHeaders(),
+                ...authFetchOpts(),
             }));
             if (!res.ok) {
                 if (res.status === 404) return null;
@@ -173,7 +181,7 @@ export const auth = {
 
         const res = handleUnauthorized(await fetch(`${BASE}/users/${user.id}/onboarding`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            ...authFetchOpts(),
             body: JSON.stringify(profileData)
         }));
 
