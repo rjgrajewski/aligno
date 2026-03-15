@@ -301,15 +301,13 @@ Input:
                 logging.error(f"❌ JSON is too mangled: {e}")
                 return {}
         
-        # DEBUG: Check for mismatches
         input_keys = {s['original_skill_name'] for s in skills_data}
-        output_keys = set(result_map.keys())
-        
-        missing = input_keys - output_keys
-        extra = output_keys - input_keys
-        
-        if missing or extra:
-            logging.warning(f"⚠️ Key Mismatch in batch! Missing: {len(missing)}, Extra: {len(extra)}")
+        missing = input_keys - set(result_map.keys())
+
+        if missing:
+            logging.warning(f"⚠️ Key Mismatch: AI altered {len(missing)} key(s). Falling back to identity. Missing: {missing}")
+            for m_key in missing:
+                result_map[m_key] = m_key
             
         result.update(result_map)
         return result
@@ -692,13 +690,16 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
 
         if stage in ['all', 'normalize']:
             # 2 & 3. Normalize Loop
-            while True:
+            MAX_ITERATIONS = 200
+            iteration = 0
+            while iteration < MAX_ITERATIONS:
                 batch = await get_unnormalized_skills(conn, limit=50)
                 if not batch:
                     logging.info("No more un-normalized skills.")
                     break
-                    
-                logging.info(f"Normalizing batch of {len(batch)} skills...")
+                
+                iteration += 1
+                logging.info(f"Normalizing batch of {len(batch)} skills... (iteration {iteration}/{MAX_ITERATIONS})")
                 normalized_map = normalize_batch_with_ai(batch, bedrock)
                 
                 if normalized_map:
@@ -706,6 +707,9 @@ async def run_normalization_process(stage: str = 'all', clear_first: bool = Fals
                 else:
                     logging.warning("Empty response from AI, stopping or skipping.")
                     break
+            else:
+                logging.error(f"🛑 Normalization loop hit {MAX_ITERATIONS} iteration limit. "
+                              f"Stopping to prevent runaway costs.")
 
         if stage in ['all', 'deduplicate']:
             # 5. Semantic Deduplication
